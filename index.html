@@ -344,7 +344,7 @@ const GH_DEFAULT = {repo: 'rggyh95wwz-netizen/fcf-budget', branch: 'main'};
 const GH_KEY = 'fcf_budget_gh_v1';
 function ghCfg(){ try { return JSON.parse(localStorage.getItem(GH_KEY) || sessionStorage.getItem(GH_KEY) || 'null'); } catch(e){ return null; } }
 async function gh(path, opt = {}){
-  const r = await fetch(`https://api.github.com/repos/${src.repo}/${path}`, {...opt, headers: {Authorization: `Bearer ${src.token}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28', ...(opt.body ? {'Content-Type': 'application/json'} : {})}});
+  const r = await fetch(`https://api.github.com/repos/${src.repo}${path ? "/" + path : ""}`, {...opt, headers: {Authorization: `Bearer ${src.token}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28', ...(opt.body ? {'Content-Type': 'application/json'} : {})}});
   if (!r.ok) { const e = new Error((await r.json().catch(() => ({}))).message || r.statusText); e.status = r.status; throw e; }
   return r.status === 204 ? null : r.json();
 }
