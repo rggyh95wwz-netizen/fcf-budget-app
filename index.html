@@ -1,0 +1,1367 @@
+<!doctype html>
+<html lang="de-CH">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FCF Budget & Löhne</title>
+<style>
+:root{
+  --bg:#f5f6f8;--panel:#fff;--panel2:#f0f2f5;--line:#e1e4e9;--text:#1c2230;--muted:#667085;
+  --accent:#c8102e;--accent2:#8f0b20;--accentSoft:#fbe9ec;--ok:#1f8a4c;--okSoft:#e6f4ec;--warn:#b26a00;--warnSoft:#fff4e0;
+  --bar1:#3b6fd8;--bar2:#c8102e;--bar3:#9aa4b5;--shadow:0 1px 2px rgba(16,24,40,.06),0 1px 3px rgba(16,24,40,.08);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){
+  --bg:#12151b;--panel:#1a1e26;--panel2:#222733;--line:#2e3442;--text:#e6e9ef;--muted:#9aa3b2;
+  --accent:#ef4058;--accent2:#ff6b80;--accentSoft:#3a1c22;--ok:#4cc280;--okSoft:#17301f;--warn:#e0a040;--warnSoft:#33280f;
+  --bar1:#6b95ec;--bar2:#ef4058;--bar3:#5b6475;--shadow:none}}
+:root[data-theme=dark]{
+  --bg:#12151b;--panel:#1a1e26;--panel2:#222733;--line:#2e3442;--text:#e6e9ef;--muted:#9aa3b2;
+  --accent:#ef4058;--accent2:#ff6b80;--accentSoft:#3a1c22;--ok:#4cc280;--okSoft:#17301f;--warn:#e0a040;--warnSoft:#33280f;
+  --bar1:#6b95ec;--bar2:#ef4058;--bar3:#5b6475;--shadow:none}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--text);font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+button,input,select,textarea{font:inherit;color:inherit}
+#app{display:grid;grid-template-columns:230px 1fr;min-height:100vh}
+nav{background:var(--panel);border-right:1px solid var(--line);padding:18px 12px;position:sticky;top:0;height:100vh;overflow:auto}
+nav .brand{display:flex;gap:10px;align-items:center;padding:0 8px 16px}
+nav .logo{width:34px;height:34px;border-radius:9px;background:var(--accent);color:#fff;display:grid;place-items:center;font-weight:800;letter-spacing:.5px;font-size:12px}
+nav .brand b{display:block;font-size:15px}nav .brand small{color:var(--muted)}
+nav .grp{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);padding:14px 10px 6px}
+nav a{display:flex;gap:9px;align-items:center;padding:7px 10px;border-radius:8px;color:var(--text);text-decoration:none;cursor:pointer}
+nav a:hover{background:var(--panel2)}nav a.on{background:var(--accentSoft);color:var(--accent);font-weight:600}
+nav .save{margin-top:18px;padding:10px;border:1px solid var(--line);border-radius:10px;font-size:12px;color:var(--muted)}
+nav .save .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ok);margin-right:6px}
+nav .save .dot.dirty{background:var(--warn)}
+main{padding:20px 28px 60px;min-width:0}
+.top{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin-bottom:18px}
+.top h1{font-size:22px;margin:0}
+.top .sel{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+select,input[type=text],input[type=number],input[type=date],input[type=search],textarea{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 9px;min-width:0}
+input[type=number]{text-align:right}
+textarea{width:100%;min-height:60px}
+.btn{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:6px 12px;cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:var(--muted)}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}.btn.pri:hover{background:var(--accent2)}
+.btn.sm{padding:3px 8px;font-size:12px}
+.btn.ghost{border-color:transparent;background:transparent}
+.btn.ghost:hover{background:var(--panel2)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;box-shadow:var(--shadow);margin-bottom:16px}
+.card h2{font-size:15px;margin:0 0 12px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.card h2 small{font-weight:400;color:var(--muted)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin-bottom:16px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;box-shadow:var(--shadow)}
+.kpi .l{font-size:12px;color:var(--muted)}.kpi .v{font-size:21px;font-weight:700;font-variant-numeric:tabular-nums;margin-top:2px}
+.kpi .s{font-size:12px;color:var(--muted)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:1100px){.grid2{grid-template-columns:1fr}}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.toolbar .sp{flex:1}
+.tw{overflow:auto;border:1px solid var(--line);border-radius:10px;max-height:70vh}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th,td{padding:6px 9px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle;white-space:nowrap}
+th{position:sticky;top:0;background:var(--panel2);font-size:12px;font-weight:600;color:var(--muted);z-index:1;cursor:pointer;user-select:none}
+th.ns{cursor:default}
+td.n,th.n{text-align:right}
+tr:hover td{background:color-mix(in srgb,var(--panel2) 60%,transparent)}
+tfoot td{font-weight:700;background:var(--panel2);position:sticky;bottom:0}
+td input[type=number]{width:80px;padding:3px 6px}
+td input[type=text]{width:150px;padding:3px 6px}
+.tag{display:inline-block;padding:1px 8px;border-radius:99px;font-size:11px;background:var(--panel2);color:var(--muted);border:1px solid var(--line)}
+.tag.ein{background:#e8efff;color:#2b55b8;border-color:#cdd9fb}.tag.pau{background:var(--okSoft);color:var(--ok);border-color:transparent}.tag.eins{background:var(--warnSoft);color:var(--warn);border-color:transparent}
+.tag.red{background:var(--accentSoft);color:var(--accent);border-color:transparent}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]) .tag.ein{background:#1d2a48;color:#9bb7f5;border-color:transparent}}
+.muted{color:var(--muted)}.pos{color:var(--ok)}.neg{color:var(--accent)}
+.bars .row{display:grid;grid-template-columns:190px 1fr 110px;gap:10px;align-items:center;padding:4px 0}
+.bars .lbl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bars .track{position:relative;height:18px;background:var(--panel2);border-radius:5px;overflow:hidden}
+.bars .b{position:absolute;left:0;top:0;bottom:0;border-radius:5px}
+.bars .b.b1{background:var(--bar3);opacity:.55}.bars .b.b2{background:var(--bar1);top:4px;bottom:4px}
+.bars .val{text-align:right;font-variant-numeric:tabular-nums;font-size:12px}
+.legend{display:flex;gap:14px;font-size:12px;color:var(--muted);margin-bottom:8px}
+.legend i{display:inline-block;width:12px;height:8px;border-radius:2px;margin-right:5px;vertical-align:middle}
+dialog{border:1px solid var(--line);border-radius:14px;padding:0;background:var(--panel);color:var(--text);width:min(760px,94vw);box-shadow:0 20px 60px rgba(0,0,0,.3)}
+dialog::backdrop{background:rgba(10,14,22,.45)}
+dialog header{padding:14px 18px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+dialog header h3{margin:0;font-size:16px}
+dialog .body{padding:16px 18px;max-height:70vh;overflow:auto}
+dialog footer{padding:12px 18px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end}
+.form{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px 14px}
+.form label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted)}
+.form label.w2{grid-column:span 2}.form label.full{grid-column:1/-1}
+.form input,.form select,.form textarea{color:var(--text);font-size:14px}
+.form .calc{grid-column:1/-1;background:var(--panel2);border-radius:8px;padding:10px 12px;font-size:13px}
+.hint{font-size:12px;color:var(--muted)}
+.notice{padding:10px 14px;border-radius:10px;background:var(--warnSoft);color:var(--warn);margin-bottom:14px}
+.notice.ok{background:var(--okSoft);color:var(--ok)}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:14px}
+.tabs a{padding:8px 14px;cursor:pointer;border-bottom:2px solid transparent;color:var(--muted)}
+.tabs a.on{border-color:var(--accent);color:var(--text);font-weight:600}
+.empty{padding:30px;text-align:center;color:var(--muted)}
+details.team{border:1px solid var(--line);border-radius:10px;margin-bottom:8px;background:var(--panel)}
+details.team>summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:18px minmax(200px,1.6fr) repeat(6,minmax(90px,1fr));gap:10px;align-items:center;padding:10px 14px}
+details.team>summary::-webkit-details-marker{display:none}
+details.team>summary:hover{background:var(--panel2);border-radius:10px}
+details.team .chev{transition:transform .15s;color:var(--muted)}details.team[open] .chev{transform:rotate(90deg)}
+details.team .tn{font-weight:600}
+details.team .tk{text-align:right;font-variant-numeric:tabular-nums}details.team .tk small{display:block;font-size:11px;color:var(--muted)}
+details.team .tbody{padding:4px 14px 14px;border-top:1px solid var(--line)}
+details.team .tgrid{display:grid;grid-template-columns:minmax(0,1.9fr) minmax(280px,1fr);gap:16px;margin-top:10px}
+details.team .tgrid>div{min-width:0}
+details.team .bpos td:first-child{white-space:normal}
+details.team tr.grp td{font-weight:600;background:var(--panel2)}
+details.stamm>summary{cursor:pointer}
+.kat{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:14px 0 6px}
+@media (max-width:1200px){details.team>summary{grid-template-columns:18px 1fr repeat(3,auto)}details.team .tk:nth-of-type(n+5){display:none}details.team .tgrid{grid-template-columns:1fr}}
+#toast{position:fixed;bottom:18px;right:18px;background:var(--text);color:var(--bg);padding:10px 16px;border-radius:10px;opacity:0;transition:.25s;pointer-events:none;z-index:50}
+#toast.on{opacity:.95}
+#printArea{display:none}
+@media (max-width:800px){#app{grid-template-columns:1fr}nav{position:static;height:auto}main{padding:16px}}
+
+/* ---------- Beleg ---------- */
+.beleg{background:#fff;color:#111;width:210mm;min-height:290mm;padding:18mm 18mm 14mm;margin:0 auto 20px;font-size:10.5pt;position:relative}
+.beleg .bh{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #c8102e;padding-bottom:10px}
+.beleg .club{font-size:16pt;font-weight:800;color:#c8102e}
+.beleg .club small{display:block;font-size:9pt;color:#444;font-weight:400}
+.beleg .meta{text-align:right;font-size:9pt;color:#333}
+.beleg .addr{margin:16mm 0 10mm;min-height:28mm;font-size:11pt}
+.beleg h2{font-size:14pt;margin:0 0 4px}
+.beleg .sub{color:#555;margin-bottom:12px}
+.beleg table{width:100%;border-collapse:collapse;margin:8px 0 14px}
+.beleg th{background:#f1f1f1;color:#333;font-size:9pt;position:static;text-align:left;padding:5px 6px;border-bottom:1px solid #bbb}
+.beleg td{padding:5px 6px;border-bottom:1px solid #ddd;white-space:normal}
+.beleg .tot td{border:none;padding:3px 6px}
+.beleg .tot .net td{font-weight:800;font-size:12pt;border-top:2px solid #111;padding-top:6px}
+.beleg .pay{margin-top:10px;padding:10px;border:1px solid #ccc;border-radius:6px;font-size:10pt}
+.beleg .sig{display:grid;grid-template-columns:1fr 1fr;gap:20mm;margin-top:22mm}
+.beleg .sig div{border-top:1px solid #333;padding-top:4px;font-size:9pt;color:#444}
+.beleg .foot{position:absolute;bottom:10mm;left:18mm;right:18mm;font-size:8pt;color:#777;border-top:1px solid #ddd;padding-top:4px}
+.printlist{background:#fff;color:#111;padding:12mm;font-size:9pt}
+.printlist table th{position:static;background:#eee;color:#111}
+@media print{
+  @page{size:A4;margin:0}
+  body{background:#fff}
+  #app,#toast,dialog{display:none!important}
+  #printArea{display:block}
+  .beleg{margin:0;page-break-after:always;box-shadow:none}
+  .printlist{page-break-after:always}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <nav id="nav"></nav>
+  <main id="main"></main>
+</div>
+<dialog id="dlg"><form method="dialog" id="dlgForm"><header><h3 id="dlgTitle"></h3><button class="btn ghost" value="cancel" formnovalidate>✕</button></header><div class="body" id="dlgBody"></div><footer id="dlgFoot"></footer></form></dialog>
+<div id="toast"></div>
+<div id="printArea"></div>
+<input type="file" id="fileIn" accept=".js,.json" hidden>
+<input type="file" id="csvIn" accept=".csv,.txt" hidden>
+<input type="file" id="dirIn" webkitdirectory hidden>
+<script>
+"use strict";
+/* =====================================================================
+   FCF Budget & Löhne – lokale App
+   Daten: CSV-Dateien im Ordner daten/ des Git-Repos fcf-budget
+   ===================================================================== */
+const LS_UI = 'fcf_budget_ui_v1';
+let D = null;            // Daten
+let dirty = false;       // Änderungen seit letztem Datei-Speichern
+let noData = false;      // keine Daten gefunden
+let ui = {view:'dashboard', saison:null, hj:'H1', sort:{}, q:{}, stamm:'personen', stat:'teams'};
+try { Object.assign(ui, JSON.parse(localStorage.getItem(LS_UI)||'{}')); } catch(e){}
+
+/* ---------- Helpers ---------- */
+const $ = s => document.querySelector(s);
+const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const num = v => { if (v === null || v === undefined || v === '') return 0; const n = Number(String(v).replace(/['’\s]/g,'').replace(',', '.')); return isFinite(n) ? n : 0; };
+const isSet = v => v !== null && v !== undefined && v !== '';
+const r05 = v => Math.round(v * 20) / 20;
+const chf = (v, d = 2) => (Number(v) || 0).toLocaleString('de-CH', {minimumFractionDigits:d, maximumFractionDigits:d});
+const chf0 = v => chf(v, 0);
+const pct = (a, b) => b ? Math.round(a / b * 100) + ' %' : '–';
+const uid = p => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const norm = s => (s||'').normalize('NFKD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z ]/g,' ').split(/\s+/).filter(Boolean).sort().join(' ');
+const HJ = {H1:'1. Halbjahr (Vorrunde)', H2:'2. Halbjahr (Rückrunde)'};
+const HJk = {H1:'1. HJ', H2:'2. HJ'};
+const ART = {einheiten:'pro Einheit (NDS)', pauschal:'Pauschal', einsatz:'pro Einsatz'};
+const ARTtag = {einheiten:'ein', pauschal:'pau', einsatz:'eins'};
+function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('on'); clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove('on'),2200); }
+
+/* ---------- Index ---------- */
+let idx = {p:{}, t:{}, f:{}};
+function reindex(){
+  idx = {p:{}, t:{}, f:{}};
+  D.personen.forEach(p => idx.p[p.id] = p);
+  D.teams.forEach(t => idx.t[t.id] = t);
+  D.funktionen.forEach(f => idx.f[f.id] = f);
+}
+const S = () => D.saisons.find(s => s.id === ui.saison) || D.saisons[D.saisons.length - 1];
+const pname = p => p ? `${p.vorname} ${p.nachname}`.trim() : '– offen –';
+const pnameRev = p => p ? `${p.nachname} ${p.vorname}`.trim() : '– offen –';
+const tname = id => idx.t[id]?.name || id || '–';
+const fname = id => idx.f[id]?.name || id || '–';
+
+/* ---------- Berechnung ---------- */
+const art = z => idx.f[z.funktionId]?.abrechnung || 'pauschal';
+const ansatz = z => (num(z.grund) + num(z.js) + num(z.treue)) * (num(z.faktor) || 1);
+const ansatzE = z => num(z.ansatzEinsatz) || num(idx.f[z.funktionId]?.ansatzEinsatz);
+function bonusE(z, n){ const f = idx.f[z.funktionId]; return f && num(f.bonusAb) > 0 && n >= num(f.bonusAb) ? num(f.bonus) : 0; }
+function budgetCalc(z){
+  switch (art(z)) {
+    case 'einheiten': return num(z.einheitenBudget) * ansatz(z);
+    case 'einsatz': { const n = num(z.budgetEinsaetze); return n * ansatzE(z) + bonusE(z, n); }
+    default: return num(z.pauschaleH1) + num(z.pauschaleH2);
+  }
+}
+const budget = z => isSet(z.budgetManuell) ? num(z.budgetManuell) : budgetCalc(z);
+const erf = (s, hj, zid) => (s.erfassung[hj] || {})[zid];
+function istCalc(z, hj, e){
+  switch (art(z)) {
+    case 'einheiten': return num(e.einheiten) * ansatz(z);
+    case 'einsatz': { const n = num(e.einsaetze); return n * ansatzE(z) + bonusE(z, n); }
+    default: return e.ok ? num(z['pauschale' + hj]) : 0;
+  }
+}
+function ist(s, z, hj){
+  const e = erf(s, hj, z.id); if (!e) return 0;
+  return (isSet(e.manuell) ? num(e.manuell) : istCalc(z, hj, e)) + num(e.korrektur);
+}
+const istJahr = (s, z) => ist(s, z, 'H1') + ist(s, z, 'H2');
+const spesenAnteil = z => num(idx.f[z.funktionId]?.spesenanteil);
+function detailText(z, hj, e){
+  if (!e) return '';
+  let t;
+  if (isSet(e.manuell)) t = 'Betrag manuell';
+  else switch (art(z)) {
+    case 'einheiten': t = `${num(e.einheiten)} Einheiten × CHF ${chf(ansatz(z))}`; break;
+    case 'einsatz': { const n = num(e.einsaetze), b = bonusE(z, n); t = `${n} Einsätze × CHF ${chf(ansatzE(z))}` + (b ? ` + Pauschale CHF ${chf0(b)}` : ''); break; }
+    default: t = 'Pauschale ' + HJk[hj];
+  }
+  if (num(e.korrektur)) t += `, Korrektur ${num(e.korrektur) > 0 ? '+' : ''}${chf(e.korrektur)}`;
+  if (e.bemerkung) t += ` (${e.bemerkung})`;
+  return t;
+}
+function jahresLohn(s, pid){
+  return s.zuordnungen.filter(z => z.personId === pid)
+    .reduce((a, z) => a + Math.max(budget(z), istJahr(s, z)) * (1 - spesenAnteil(z) / 100), 0);
+}
+function ahvPflichtig(s, pid){
+  const p = idx.p[pid]; const m = p?.ahvPflicht || 'auto';
+  if (m === 'ja') return true; if (m === 'nein') return false;
+  return jahresLohn(s, pid) > num(D.einstellungen.ahvFreigrenze);
+}
+function abrechnung(s, pid, hj){
+  const pos = [];
+  s.zuordnungen.filter(z => z.personId === pid).forEach(z => {
+    const e = erf(s, hj, z.id); const b = ist(s, z, hj);
+    if (!e || !b) return;
+    const sp = r05(b * spesenAnteil(z) / 100);
+    pos.push({z, betrag: b, spesen: sp, detail: detailText(z, hj, e)});
+  });
+  const brutto = pos.reduce((a, x) => a + x.betrag, 0);
+  const spesen = pos.reduce((a, x) => a + x.spesen, 0);
+  const lohn = brutto - spesen;
+  const pflicht = ahvPflichtig(s, pid);
+  const E = D.einstellungen;
+  const basis = E.ahvBasis === 'lohn' ? lohn : brutto;
+  const ahv = pflicht ? r05(basis * num(E.ahvSatz) / 100) : 0;
+  return {pos, brutto, spesen, lohn, pflicht, ahv, netto: brutto - ahv};
+}
+function personenMitBetrag(s, hj){
+  const ids = [...new Set(s.zuordnungen.filter(z => z.personId).map(z => z.personId))];
+  return ids.map(pid => ({p: idx.p[pid], a: abrechnung(s, pid, hj)})).filter(x => x.p && x.a.brutto)
+    .sort((a, b) => pnameRev(a.p).localeCompare(pnameRev(b.p), 'de'));
+}
+const teamBudgetSum = (s, tid, gruppe) => {
+  const tb = s.teamBudget[tid] || {};
+  return D.budgetPositionen.filter(p => !gruppe || p.gruppe === gruppe).reduce((a, p) => a + num(tb[p.id]), 0);
+};
+const teamAufwand = (s, tid) => D.budgetPositionen.filter(p => p.art === 'aufwand').reduce((a, p) => a + num((s.teamBudget[tid] || {})[p.id]), 0);
+const teamErtrag = (s, tid) => D.budgetPositionen.filter(p => p.art === 'ertrag').reduce((a, p) => a + num((s.teamBudget[tid] || {})[p.id]), 0);
+
+/* ---------- Speichern / Laden (Git-Repo mit CSV-Dateien) ----------
+   Struktur im Repo:
+     daten/stammdaten/personen.csv, teams.csv, funktionen.csv, budgetpositionen.csv, einstellungen.json
+     daten/saisons/<id>/saison.json, zuordnungen.csv, teambudget.csv, team_eckdaten.csv, erfassung.csv, belege.csv
+   Jede Änderung wird sofort in die CSV-Dateien geschrieben (nur geänderte Dateien).
+   Commit/Push/Pull macht Git (GitHub Desktop oder Obsidian Git). */
+const SCHEMA = {
+  personen: {cols: ['id','anrede','vorname','nachname','adresse','plz','ort','email','telefon','iban','ahvNr','ahvPflicht','eintritt','aktiv','notiz'], num: ['eintritt'], bool: ['aktiv'], sort: 'id'},
+  teams: {cols: ['id','name','kategorie','aktiv'], bool: ['aktiv']},
+  funktionen: {cols: ['id','name','bereich','abrechnung','spesenanteil','pauschaleHJ','ansatzEinsatz','bonusAb','bonus'], num: ['spesenanteil','pauschaleHJ','ansatzEinsatz','bonusAb','bonus']},
+  budgetpositionen: {cols: ['id','gruppe','art','name']},
+  zuordnungen: {cols: ['id','personId','teamId','funktionId','rolle','trainings','spiele','einheitenBudget','grund','js','treue','faktor','pauschaleH1','pauschaleH2','ansatzEinsatz','budgetEinsaetze','budgetManuell','notiz'], num: ['trainings','spiele','einheitenBudget','grund','js','treue','faktor','pauschaleH1','pauschaleH2','ansatzEinsatz','budgetEinsaetze','budgetManuell'], sort: 'id'},
+  teambudget: {cols: ['teamId','positionId','betrag'], num: ['betrag']},
+  team_eckdaten: {cols: ['teamId','feld','wert'], num: ['wert']},
+  erfassung: {cols: ['halbjahr','zuordnungId','einheiten','einsaetze','ok','manuell','korrektur','bemerkung'], num: ['einheiten','einsaetze','manuell','korrektur'], bool: ['ok']},
+  belege: {cols: ['halbjahr','personId','status','datum']},
+};
+let src = null;          // {kind:'gh', repo, token, head, tree, cache} | {kind:'fs', root} | {kind:'files', files} (nur lesen)
+let lastText = {};       // zuletzt gelesener/geschriebener Inhalt pro Datei
+let lastMod = {};        // lastModified pro Datei beim Lesen/Schreiben
+let conflict = null;     // Pfad einer extern geänderten Datei
+let saveTimer = null, saving = false;
+const readOnly = () => src?.kind === 'files' || (src?.kind === 'gh' && !src.push);
+
+function csvCell(v){ if (v === null || v === undefined) return ''; const s = typeof v === 'boolean' ? (v ? 'ja' : 'nein') : String(v); return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }
+function toCSV(name, rows){
+  const sc = SCHEMA[name];
+  return [sc.cols.join(',')].concat(rows.map(r => sc.cols.map(c => csvCell(r[c])).join(','))).join('\n') + '\n';
+}
+function fromCSV(name, text){
+  const sc = SCHEMA[name]; const rows = parseCSV(text); if (!rows.length) return [];
+  const head = rows[0].map(h => h.trim());
+  return rows.slice(1).map(r => {
+    const o = {}; head.forEach((h, i) => { o[h] = r[i] ?? ''; });
+    (sc.num || []).forEach(k => { o[k] = o[k] === '' || o[k] === undefined ? (k === 'budgetManuell' || k === 'manuell' || k === 'korrektur' || k === 'einheiten' || k === 'einsaetze' || k === 'eintritt' ? '' : 0) : num(o[k]); });
+    (sc.bool || []).forEach(k => { o[k] = ['ja', 'true', '1', 'x'].includes(String(o[k]).toLowerCase()); });
+    return o;
+  });
+}
+const byKey = (...ks) => (a, b) => { for (const k of ks) { const r = String(a[k] ?? '').localeCompare(String(b[k] ?? ''), 'de', {numeric: true}); if (r) return r; } return 0; };
+function serialize(){
+  const f = {};
+  f['daten/stammdaten/personen.csv'] = toCSV('personen', [...D.personen].sort(byKey('id')));
+  f['daten/stammdaten/teams.csv'] = toCSV('teams', D.teams);
+  f['daten/stammdaten/funktionen.csv'] = toCSV('funktionen', D.funktionen);
+  f['daten/stammdaten/budgetpositionen.csv'] = toCSV('budgetpositionen', D.budgetPositionen);
+  f['daten/stammdaten/einstellungen.json'] = JSON.stringify({verein: D.verein, einstellungen: D.einstellungen}, null, 2) + '\n';
+  D.saisons.forEach(s => {
+    const b = `daten/saisons/${s.id}/`;
+    f[b + 'saison.json'] = JSON.stringify({id: s.id, name: s.name, status: s.status, notiz: s.notiz || ''}, null, 2) + '\n';
+    f[b + 'zuordnungen.csv'] = toCSV('zuordnungen', [...s.zuordnungen].sort(byKey('id')).map(z => ({...z, budgetManuell: isSet(z.budgetManuell) ? z.budgetManuell : ''})));
+    f[b + 'teambudget.csv'] = toCSV('teambudget', Object.entries(s.teamBudget).flatMap(([t, x]) => Object.entries(x).filter(([, v]) => isSet(v) && num(v)).map(([k, v]) => ({teamId: t, positionId: k, betrag: v}))).sort(byKey('teamId', 'positionId')));
+    f[b + 'team_eckdaten.csv'] = toCSV('team_eckdaten', Object.entries(s.teamEckdaten).flatMap(([t, x]) => Object.entries(x).filter(([, v]) => isSet(v)).map(([k, v]) => ({teamId: t, feld: k, wert: v}))).sort(byKey('teamId', 'feld')));
+    f[b + 'erfassung.csv'] = toCSV('erfassung', ['H1', 'H2'].flatMap(h => Object.entries(s.erfassung[h] || {}).map(([zid, e]) => ({halbjahr: h, zuordnungId: zid, ...e, ok: e.ok ? true : ''}))).sort(byKey('halbjahr', 'zuordnungId')));
+    f[b + 'belege.csv'] = toCSV('belege', ['H1', 'H2'].flatMap(h => Object.entries(s.belege[h] || {}).map(([pid, x]) => ({halbjahr: h, personId: pid, ...x}))).sort(byKey('halbjahr', 'personId')));
+  });
+  return f;
+}
+/* ---------- GitHub (Daten im privaten Repo, Speichern als Commit) ---------- */
+const GH_DEFAULT = {repo: 'rggyh95wwz-netizen/fcf-budget', branch: 'main'};
+const GH_KEY = 'fcf_budget_gh_v1';
+function ghCfg(){ try { return JSON.parse(localStorage.getItem(GH_KEY) || sessionStorage.getItem(GH_KEY) || 'null'); } catch(e){ return null; } }
+async function gh(path, opt = {}){
+  const r = await fetch(`https://api.github.com/repos/${src.repo}/${path}`, {...opt, headers: {Authorization: `Bearer ${src.token}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28', ...(opt.body ? {'Content-Type': 'application/json'} : {})}});
+  if (!r.ok) { const e = new Error((await r.json().catch(() => ({}))).message || r.statusText); e.status = r.status; throw e; }
+  return r.status === 204 ? null : r.json();
+}
+const b64utf8 = b => new TextDecoder().decode(Uint8Array.from(atob(b.replace(/\n/g, '')), c => c.charCodeAt(0)));
+async function ghTree(sha){ const t = await gh(`git/trees/${sha}?recursive=1`); const m = {}; t.tree.filter(x => x.type === 'blob').forEach(x => m[x.path] = x.sha); return m; }
+async function ghLoad(){
+  src.head = (await gh(`git/ref/heads/${src.branch}`)).object.sha;
+  src.tree = await ghTree(src.head); src.cache = {};
+  const paths = Object.keys(src.tree).filter(p => p.startsWith('daten/'));
+  await Promise.all(paths.map(async p => { src.cache[p] = b64utf8((await gh(`git/blobs/${src.tree[p]}`)).content); }));
+}
+async function ghLogin(form){
+  const token = form.token.trim(), repo = (form.repo || GH_DEFAULT.repo).trim();
+  if (!token) return toast('Bitte Zugangsschlüssel eingeben');
+  const s = {kind: 'gh', token, repo, branch: GH_DEFAULT.branch};
+  try {
+    const prev = src; src = s;
+    const info = await gh(''); s.push = !!info.permissions?.push;
+    const u = await fetch('https://api.github.com/user', {headers: {Authorization: `Bearer ${token}`}}).then(r => r.ok ? r.json() : {});
+    s.user = u.login || ''; src = prev;
+    const cfg = JSON.stringify({token, repo, user: s.user});
+    try { localStorage.removeItem(GH_KEY); sessionStorage.removeItem(GH_KEY); (form.merken ? localStorage : sessionStorage).setItem(GH_KEY, cfg); } catch(e){}
+    await openSource(s);
+  } catch(e){ src = null; toast(e.status === 401 ? 'Zugangsschlüssel ungültig' : e.status === 404 ? `Kein Zugriff auf ${repo}. Schlüssel braucht Zugriff auf dieses Repo.` : 'Anmeldung fehlgeschlagen: ' + e.message); render(); }
+}
+function ghLogout(){ try { localStorage.removeItem(GH_KEY); sessionStorage.removeItem(GH_KEY); } catch(e){} src = null; D = emptyData(); migrate(); render(); }
+async function ghSave(changes, deletes){
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const head = (await gh(`git/ref/heads/${src.branch}`)).object.sha;
+    let remoteMoved = false;
+    if (head !== src.head) {
+      const remote = await ghTree(head);
+      const clash = Object.keys(changes).find(p => remote[p] !== src.tree[p]);
+      if (clash) { conflict = clash; return false; }
+      remoteMoved = true; src.head = head;
+      Object.entries(remote).forEach(([p, sha]) => { if (!(p in changes)) src.tree[p] = sha; });
+    }
+    const base = await gh(`git/commits/${head}`);
+    const entries = Object.entries(changes).map(([path, content]) => ({path, mode: '100644', type: 'blob', content}))
+      .concat(deletes.map(path => ({path, mode: '100644', type: 'blob', sha: null})));
+    const tree = await gh('git/trees', {method: 'POST', body: JSON.stringify({base_tree: base.tree.sha, tree: entries})});
+    const files = Object.keys(changes).concat(deletes).map(p => p.replace(/^daten\//, '')).join(', ');
+    const commit = await gh('git/commits', {method: 'POST', body: JSON.stringify({message: `App: ${files.length > 120 ? Object.keys(changes).length + ' Dateien' : files} geändert${src.user ? ' (' + src.user + ')' : ''}`, tree: tree.sha, parents: [head]})});
+    try { await gh(`git/refs/heads/${src.branch}`, {method: 'PATCH', body: JSON.stringify({sha: commit.sha})}); }
+    catch(e){ if (e.status === 422) continue; throw e; }
+    src.head = commit.sha; src.tree = await ghTree(commit.sha);
+    if (remoteMoved) toast('Änderungen von Kolleg/innen wurden zusammengeführt');
+    return true;
+  }
+  throw new Error('Repo wurde gleichzeitig geändert, bitte neu laden');
+}
+async function ghCheckRemote(){
+  if (src?.kind !== 'gh' || dirty || saving || conflict) return;
+  try { const head = (await gh(`git/ref/heads/${src.branch}`)).object.sha; if (head !== src.head) { await openSource(src, true); toast('Neue Änderungen geladen'); } } catch(e){}
+}
+async function fsFile(path, create){
+  const parts = path.split('/'); const name = parts.pop();
+  const d = await getSub(src.root, parts, create); return d.getFileHandle(name, {create});
+}
+async function readText(path){
+  if (src.kind === 'gh') return src.cache[path] ?? null;
+  if (src.kind === 'files') { const f = src.files[path]; if (!f) return null; lastMod[path] = f.lastModified; return f.text(); }
+  try { const f = await (await fsFile(path, false)).getFile(); lastMod[path] = f.lastModified; return await f.text(); } catch(e){ return null; }
+}
+async function listSaisons(){
+  if (src.kind === 'gh') return [...new Set(Object.keys(src.tree).map(p => (p.match(/^daten\/saisons\/([^/]+)\//) || [])[1]).filter(Boolean))].sort();
+  if (src.kind === 'files') return [...new Set(Object.keys(src.files).map(p => (p.match(/^daten\/saisons\/([^/]+)\//) || [])[1]).filter(Boolean))].sort();
+  try { const d = await getSub(src.root, ['daten', 'saisons'], false); const out = []; for await (const [n, h] of d.entries()) if (h.kind === 'directory') out.push(n); return out.sort(); } catch(e){ return []; }
+}
+async function readAll(){
+  lastText = {}; lastMod = {};
+  const rd = async p => { const t = await readText(p); if (t !== null) lastText[p] = t; return t; };
+  const pers = await rd('daten/stammdaten/personen.csv');
+  if (pers === null) return null;
+  const ein = JSON.parse(await rd('daten/stammdaten/einstellungen.json') || '{}');
+  const d = {version: 2, verein: ein.verein || emptyData().verein, einstellungen: ein.einstellungen || emptyData().einstellungen,
+    personen: fromCSV('personen', pers), teams: fromCSV('teams', await rd('daten/stammdaten/teams.csv') || ''),
+    funktionen: fromCSV('funktionen', await rd('daten/stammdaten/funktionen.csv') || ''),
+    budgetPositionen: fromCSV('budgetpositionen', await rd('daten/stammdaten/budgetpositionen.csv') || ''), saisons: []};
+  for (const id of await listSaisons()) {
+    const b = `daten/saisons/${id}/`;
+    const meta = JSON.parse(await rd(b + 'saison.json') || '{}');
+    const s = {id, name: meta.name || id, status: meta.status || 'planung', notiz: meta.notiz || '', teamBudget: {}, teamEckdaten: {}, erfassung: {H1: {}, H2: {}}, belege: {H1: {}, H2: {}},
+      zuordnungen: fromCSV('zuordnungen', await rd(b + 'zuordnungen.csv') || '').map(z => ({...z, personId: z.personId || null, budgetManuell: isSet(z.budgetManuell) ? z.budgetManuell : null}))};
+    fromCSV('teambudget', await rd(b + 'teambudget.csv') || '').forEach(r => { (s.teamBudget[r.teamId] ||= {})[r.positionId] = r.betrag; });
+    fromCSV('team_eckdaten', await rd(b + 'team_eckdaten.csv') || '').forEach(r => { (s.teamEckdaten[r.teamId] ||= {})[r.feld] = r.wert; });
+    fromCSV('erfassung', await rd(b + 'erfassung.csv') || '').forEach(r => { const {halbjahr, zuordnungId, ...e} = r; Object.keys(e).forEach(k => { if (e[k] === '' || e[k] === false) delete e[k]; }); (s.erfassung[halbjahr] ||= {})[zuordnungId] = e; });
+    fromCSV('belege', await rd(b + 'belege.csv') || '').forEach(r => { const {halbjahr, personId, ...x} = r; (s.belege[halbjahr] ||= {})[personId] = x; });
+    d.saisons.push(s);
+  }
+  if (!d.saisons.length) d.saisons = emptyData().saisons;
+  return d;
+}
+async function saveAll(force){
+  if (!src || readOnly() || saving) return;
+  saving = true;
+  try {
+    const files = serialize();
+    if (src.kind === 'gh') {
+      const changes = {}; Object.entries(files).forEach(([p, t]) => { if (lastText[p] !== t) changes[p] = t; });
+      const ids = new Set(D.saisons.map(s => s.id));
+      const deletes = Object.keys(src.tree).filter(p => { const m = p.match(/^daten\/saisons\/([^/]+)\//); return m && !ids.has(m[1]); });
+      if (!Object.keys(changes).length && !deletes.length) { dirty = false; return; }
+      if (force) { src.head = (await gh(`git/ref/heads/${src.branch}`)).object.sha; src.tree = await ghTree(src.head); }
+      if (!(await ghSave(changes, deletes))) { render(); return; }
+      Object.assign(lastText, changes); deletes.forEach(p => delete lastText[p]);
+      conflict = null; dirty = false;
+      if (Object.keys(serialize()).some(p => serialize()[p] !== lastText[p])) setTimeout(() => saveAll(), 100);
+      return;
+    }
+    for (const [path, text] of Object.entries(files)) {
+      if (lastText[path] === text) continue;
+      const fh = await fsFile(path, true);
+      if (!force) { const cur = await fh.getFile(); if (lastMod[path] && cur.lastModified > lastMod[path] && (await cur.text()) !== lastText[path]) { conflict = path; render(); return; } }
+      const w = await fh.createWritable(); await w.write(text); await w.close();
+      lastText[path] = text; lastMod[path] = (await fh.getFile()).lastModified;
+    }
+    // gelöschte Saisons entfernen
+    const ids = new Set(D.saisons.map(s => s.id));
+    try { const d = await getSub(src.root, ['daten', 'saisons'], false); for (const id of await listSaisons()) if (!ids.has(id)) { await d.removeEntry(id, {recursive: true}); Object.keys(lastText).filter(p => p.startsWith(`daten/saisons/${id}/`)).forEach(p => delete lastText[p]); } } catch(e){}
+    conflict = null; dirty = false;
+  } catch(e){ toast('Speichern fehlgeschlagen: ' + e.message); }
+  finally { saving = false; renderNav(); }
+}
+function persist(){
+  if (!src) return;
+  if (readOnly()) { toast('Nur-Lesen-Modus: Änderungen werden nicht gespeichert'); return; }
+  dirty = true; renderNav();
+  clearTimeout(saveTimer); saveTimer = setTimeout(() => saveAll(), src.kind === 'gh' ? 2000 : 400);
+}
+async function saveNow(){ clearTimeout(saveTimer); await saveAll(); if (!conflict) toast('Gespeichert'); }
+function saveUi(){ try { localStorage.setItem(LS_UI, JSON.stringify({view:ui.view, saison:ui.saison, hj:ui.hj, stamm:ui.stamm, stat:ui.stat, open:ui.open})); } catch(e){} }
+function download(name, text, type = 'text/plain'){
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], {type: type + ';charset=utf-8'})); a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+async function getSub(dir, path, create){
+  let h = dir; for (const part of path) h = await h.getDirectoryHandle(part, {create}); return h;
+}
+async function writeTo(pathArr, name, text){
+  const d = await getSub(src.root, pathArr, true);
+  const fh = await d.getFileHandle(name, {create: true}); const w = await fh.createWritable(); await w.write(text); await w.close();
+}
+const idb = (mode, fn) => new Promise((res, rej) => {
+  const r = indexedDB.open('fcf_budget', 1); r.onupgradeneeded = () => r.result.createObjectStore('h');
+  r.onsuccess = () => { const tx = r.result.transaction('h', mode); const q = fn(tx.objectStore('h')); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); };
+  r.onerror = () => rej(r.error);
+});
+async function openSource(s, quiet){
+  const prev = src; src = s;
+  if (s.kind === 'gh') { try { await ghLoad(); } catch(e){ src = prev; toast('Laden fehlgeschlagen: ' + e.message); render(); return; } }
+  const d = await readAll();
+  if (!d) {
+    if (s.kind === 'fs' && confirm(`Im Ordner "${s.root.name}" gibt es noch keine Daten (daten/stammdaten/personen.csv). Neue, leere Datenstruktur anlegen?`)) {
+      D = emptyData(); migrate(); noData = false; await saveAll(true); render(); return;
+    }
+    src = prev; toast(s.kind === 'gh' ? `Im Repo ${s.repo} gibt es keinen Ordner daten/.` : 'Keine Daten gefunden. Bitte den Repo-Ordner "fcf-budget" wählen.'); render(); return;
+  }
+  D = d; noData = false; conflict = null; dirty = false; migrate();
+  if (s.kind === 'fs') { try { await idb('readwrite', st => st.put(s.root, 'dir')); } catch(e){} }
+  if (!quiet) toast(`${D.personen.length} Personen, ${D.saisons.length} Saisons geladen${readOnly() ? ' (nur lesen)' : ''}`);
+  render();
+}
+async function connectFolder(){
+  if (!window.showDirectoryPicker) { $('#dirIn').value = ''; $('#dirIn').click(); return; }
+  try { await openSource({kind: 'fs', root: await window.showDirectoryPicker({id: 'fcfbudget', mode: 'readwrite'})}); }
+  catch(e){ if (e.name !== 'AbortError') toast(e.message); }
+}
+async function reconnect(){
+  try {
+    const h = await idb('readonly', st => st.get('dir')); if (!h) return connectFolder();
+    if ((await h.requestPermission({mode: 'readwrite'})) === 'granted') await openSource({kind: 'fs', root: h});
+  } catch(e){ connectFolder(); }
+}
+async function reloadData(){ if (src) { await openSource(src); } }
+function parseDataText(t){
+  t = t.trim().replace(/^window\.FCF_DATEN\s*=\s*/, '').replace(/;\s*$/, '');
+  const d = JSON.parse(t); if (!d.personen || !d.saisons) throw new Error('Keine FCF-Daten'); return d;
+}
+function load(){ D = emptyData(); noData = true; migrate(); }
+function emptyData(){
+  return {version:2, verein:{name:'FC Frauenfeld', kurz:'FCF', adresse:'', plz:'', ort:'', email:'', visum:'', zahlungshinweis:''},
+    einstellungen:{ahvSatz:6.4, ahvFreigrenze:2300, ahvBasis:'total', ansatzGrund:10, jsWerte:[{wert:10,label:'J+S gültig'},{wert:2,label:'ohne J+S'}], treueStufen:[{bis:1,wert:0},{bis:4,wert:2},{bis:9,wert:4},{bis:99,wert:6}]},
+    personen:[], teams:[], funktionen:[], budgetPositionen:[], saisons:[{id:'2026-27', name:'Saison 2026/27', status:'planung', teamBudget:{}, teamEckdaten:{}, zuordnungen:[], erfassung:{H1:{},H2:{}}, belege:{H1:{},H2:{}}, notiz:''}]};
+}
+function migrate(){
+  D.saisons.forEach(s => { s.erfassung ||= {H1:{}, H2:{}}; s.belege ||= {H1:{}, H2:{}}; s.teamBudget ||= {}; s.teamEckdaten ||= {}; });
+  D.saisons.sort((a, b) => a.id.localeCompare(b.id));
+  if (!D.saisons.find(s => s.id === ui.saison)) ui.saison = (D.saisons.find(s => s.status === 'laufend') || D.saisons[D.saisons.length - 1]).id;
+  reindex();
+}
+
+/* ---------- Tabellen ---------- */
+function table(id, cols, rows, opt = {}){
+  const st = ui.sort[id] || opt.sort || {};
+  if (st.key) {
+    const c = cols.find(c => c.key === st.key);
+    if (c) {
+      const val = c.sv || c.v || (r => r[c.key]);
+      rows = [...rows].sort((a, b) => { const x = val(a), y = val(b); const r = (typeof x === 'number' && typeof y === 'number') ? x - y : String(x ?? '').localeCompare(String(y ?? ''), 'de', {numeric: true}); return st.dir === 'desc' ? -r : r; });
+    }
+  }
+  const head = cols.map(c => `<th class="${c.n ? 'n' : ''} ${c.ns ? 'ns' : ''}" ${c.ns ? '' : `data-act="sort" data-t="${id}" data-k="${c.key}"`}>${esc(c.label)}${st.key === c.key ? (st.dir === 'desc' ? ' ▼' : ' ▲') : ''}</th>`).join('');
+  const body = rows.map(r => `<tr ${opt.rowAttr ? opt.rowAttr(r) : ''}>` + cols.map(c => `<td class="${c.n ? 'n' : ''}">${c.h ? c.h(r) : esc(c.v ? c.v(r) : r[c.key])}</td>`).join('') + '</tr>').join('');
+  const foot = opt.foot ? `<tfoot><tr>${cols.map(c => `<td class="${c.n ? 'n' : ''}">${opt.foot[c.key] ?? ''}</td>`).join('')}</tr></tfoot>` : '';
+  return `<div class="tw"><table><thead><tr>${head}</tr></thead><tbody>${body || `<tr><td colspan="${cols.length}" class="empty">Keine Einträge</td></tr>`}</tbody>${foot}</table></div>`;
+}
+const searchBox = (id, ph = 'Suchen …') => `<input type="search" placeholder="${ph}" data-q="${id}" value="${esc(ui.q[id] || '')}" style="min-width:220px">`;
+const match = (id, ...vals) => { const q = (ui.q[id] || '').toLowerCase().trim(); return !q || vals.join(' ').toLowerCase().includes(q); };
+function bars(items, legend){
+  const max = Math.max(1, ...items.map(i => Math.max(i.a, i.b || 0)));
+  return (legend ? `<div class="legend"><span><i style="background:var(--bar3);opacity:.55"></i>${legend[0]}</span><span><i style="background:var(--bar1)"></i>${legend[1]}</span></div>` : '') +
+    `<div class="bars">` + items.map(i => `<div class="row"><div class="lbl" title="${esc(i.l)}">${esc(i.l)}</div><div class="track"><div class="b b1" style="width:${i.a / max * 100}%"></div>${i.b !== undefined ? `<div class="b b2" style="width:${i.b / max * 100}%"></div>` : ''}</div><div class="val">${i.t ?? chf0(i.a)}</div></div>`).join('') + `</div>`;
+}
+
+/* ---------- Navigation ---------- */
+const NAV = [
+  ['Übersicht', [['dashboard', '◧', 'Dashboard'], ['statistik', '▤', 'Statistiken']]],
+  ['Saison', [['teambudget', '⚽', 'Budget Teams'], ['personenbudget', '👤', 'Budget Personen'], ['erfassung', '✎', 'Erfassung Einsätze'], ['auszahlung', '₣', 'Auszahlung & Belege']]],
+  ['Stammdaten', [['personen', '☺', 'Personen'], ['teams', '⚑', 'Teams'], ['funktionen', '⚙', 'Funktionen']]],
+  ['System', [['einstellungen', '⚒', 'Einstellungen & Daten']]],
+];
+function renderNav(){
+  $('#nav').innerHTML = `<div class="brand"><div class="logo">${esc(D.verein.kurz || 'FCF')}</div><div><b>Budget & Löhne</b><small>${esc(D.verein.name)}</small></div></div>` +
+    NAV.map(([g, items]) => `<div class="grp">${g}</div>` + items.map(([id, ic, l]) => `<a data-act="nav" data-v="${id}" class="${ui.view === id ? 'on' : ''}"><span>${ic}</span>${l}</a>`).join('')).join('') +
+    `<div class="save">${saveBox()}</div>`;
+}
+function saveBox(){
+  if (!src) return `<span class="dot dirty"></span>Nicht angemeldet`;
+  if (src.kind === 'gh') return `<span class="dot ${dirty || conflict || saving ? 'dirty' : ''}"></span>${conflict ? 'Konflikt, nicht gespeichert' : saving ? 'Speichere auf GitHub …' : dirty ? 'Ungespeicherte Änderung …' : readOnly() ? 'Nur lesen' : 'Gespeichert auf GitHub'}<br><span class="muted">${esc(src.user || '')} · ${esc(src.repo.split('/')[1])}</span>
+    <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm" data-act="reloadData">Neu laden</button><button class="btn sm" data-act="ghLogout">Abmelden</button></div>`;
+  if (readOnly()) return `<span class="dot dirty"></span>Nur lesen (${esc(src.name || 'Ordner')})<div style="margin-top:8px"><button class="btn sm" data-act="connect">Anderen Ordner</button></div>`;
+  return `<span class="dot ${dirty || conflict ? 'dirty' : ''}"></span>${conflict ? 'Konflikt, nicht gespeichert' : dirty ? 'Speichere …' : 'Gespeichert in CSV'}<br><span class="muted">Ordner: ${esc(src.root.name)}</span>
+    <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm" data-act="reloadData" title="Nach git pull die Daten neu einlesen">Neu laden</button></div>
+    <div class="hint" style="margin-top:6px">Commit &amp; Push mit GitHub Desktop</div>`;
+}
+function saisonSel(withHj){
+  return `<div class="sel"><select data-act="saison">${D.saisons.map(s => `<option value="${s.id}" ${s.id === S().id ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}</select>` +
+    (withHj ? `<select data-act="hj">${Object.entries(HJ).map(([k, v]) => `<option value="${k}" ${ui.hj === k ? 'selected' : ''}>${v}</option>`).join('')}</select>` : '') + `</div>`;
+}
+const pageTop = (title, withSaison = true, withHj = false, extra = '') => `<div class="top"><h1>${title}</h1><div class="sel">${extra}${withSaison ? saisonSel(withHj) : ''}</div></div>`;
+
+/* ---------- Views ---------- */
+const V = {};
+
+V.dashboard = () => {
+  const s = S(); const zs = s.zuordnungen;
+  const bud = zs.reduce((a, z) => a + budget(z), 0);
+  const i1 = zs.reduce((a, z) => a + ist(s, z, 'H1'), 0), i2 = zs.reduce((a, z) => a + ist(s, z, 'H2'), 0);
+  const personen = new Set(zs.filter(z => z.personId).map(z => z.personId));
+  const offen = zs.filter(z => !z.personId);
+  const teams = D.teams.filter(t => s.teamBudget[t.id]);
+  const aufw = teams.reduce((a, t) => a + teamAufwand(s, t.id), 0), ertr = teams.reduce((a, t) => a + teamErtrag(s, t.id), 0);
+  const betr = teams.reduce((a, t) => a + teamBudgetSum(s, t.id, 'Betreuung'), 0);
+  const ohneIban = [...personen].map(id => idx.p[id]).filter(p => p && !p.iban);
+  const bel = hj => { const l = personenMitBetrag(s, hj); return {n: l.length, aus: l.filter(x => s.belege[hj]?.[x.p.id]?.status === 'ausbezahlt').length, netto: l.reduce((a, x) => a + x.a.netto, 0)}; };
+  const b1 = bel('H1'), b2 = bel('H2');
+  const byBereich = {};
+  zs.forEach(z => { const b = idx.f[z.funktionId]?.bereich || 'Andere'; byBereich[b] ||= {a: 0, b: 0}; byBereich[b].a += budget(z); byBereich[b].b += istJahr(s, z); });
+  return pageTop('Dashboard') +
+    (s.notiz ? `<div class="notice ok">${esc(s.notiz)}</div>` : '') +
+    `<div class="kpis">
+      <div class="kpi"><div class="l">Budget Personal (Personen)</div><div class="v">${chf0(bud)}</div><div class="s">${zs.length} Zuordnungen, ${personen.size} Personen</div></div>
+      <div class="kpi"><div class="l">Ist 1. Halbjahr</div><div class="v">${chf0(i1)}</div><div class="s">${pct(i1, bud)} vom Jahresbudget</div></div>
+      <div class="kpi"><div class="l">Ist 2. Halbjahr</div><div class="v">${chf0(i2)}</div><div class="s">${pct(i2, bud)} vom Jahresbudget</div></div>
+      <div class="kpi"><div class="l">Restbudget</div><div class="v ${bud - i1 - i2 < 0 ? 'neg' : ''}">${chf0(bud - i1 - i2)}</div><div class="s">Budget minus Ist</div></div>
+      <div class="kpi"><div class="l">Teambudget Aufwand</div><div class="v">${chf0(aufw)}</div><div class="s">davon Betreuung ${chf0(betr)}</div></div>
+      <div class="kpi"><div class="l">Teambudget Ertrag / DB</div><div class="v">${chf0(ertr)}</div><div class="s ${ertr - aufw < 0 ? 'neg' : 'pos'}">DB ${chf0(ertr - aufw)}</div></div>
+    </div>
+    <div class="grid2">
+      <div class="card"><h2>Budget vs. Ist nach Bereich <small>CHF</small></h2>${bars(Object.entries(byBereich).sort((a, b) => b[1].a - a[1].a).map(([k, v]) => ({l: k, a: v.a, b: v.b, t: `${chf0(v.b)} / ${chf0(v.a)}`})), ['Budget', 'Ist (1.+2. HJ)'])}</div>
+      <div class="card"><h2>Offene Punkte</h2>
+        <table><tbody>
+        <tr><td>Belege 1. HJ</td><td class="n">${b1.aus} von ${b1.n} ausbezahlt</td><td class="n">netto ${chf0(b1.netto)}</td><td><a class="btn sm" data-act="go" data-v="auszahlung" data-hj="H1">öffnen</a></td></tr>
+        <tr><td>Belege 2. HJ</td><td class="n">${b2.aus} von ${b2.n} ausbezahlt</td><td class="n">netto ${chf0(b2.netto)}</td><td><a class="btn sm" data-act="go" data-v="auszahlung" data-hj="H2">öffnen</a></td></tr>
+        <tr><td>Funktionen ohne Person</td><td class="n">${offen.length}</td><td></td><td><a class="btn sm" data-act="go" data-v="personenbudget">öffnen</a></td></tr>
+        <tr><td>Personen ohne IBAN</td><td class="n">${ohneIban.length}</td><td></td><td><a class="btn sm" data-act="go" data-v="personen">öffnen</a></td></tr>
+        </tbody></table>
+        ${offen.length ? `<p class="hint" style="margin-top:10px">Offen: ${offen.slice(0, 8).map(z => esc(`${tname(z.teamId)} – ${z.rolle || fname(z.funktionId)}`)).join(', ')}${offen.length > 8 ? ' …' : ''}</p>` : ''}
+      </div>
+    </div>
+    <div class="card"><h2>Personalbudget pro Team <small>Teambudget Betreuung vs. Personenbudget vs. Ist</small></h2>${teamCompareTable(s)}</div>`;
+};
+
+function teamCompareRows(s){
+  return D.teams.filter(t => s.teamBudget[t.id] || s.zuordnungen.some(z => z.teamId === t.id)).map(t => {
+    const zs = s.zuordnungen.filter(z => z.teamId === t.id);
+    const pb = zs.reduce((a, z) => a + budget(z), 0);
+    const i1 = zs.reduce((a, z) => a + ist(s, z, 'H1'), 0), i2 = zs.reduce((a, z) => a + ist(s, z, 'H2'), 0);
+    return {t, tb: teamBudgetSum(s, t.id, 'Betreuung'), pb, i1, i2, n: zs.length};
+  });
+}
+function teamCompareTable(s){
+  const rows = teamCompareRows(s);
+  const sum = k => chf0(rows.reduce((a, r) => a + r[k], 0));
+  return table('teamcmp', [
+    {key: 'team', label: 'Team', v: r => r.t.name, h: r => `<a data-act="teamDetail" data-id="${r.t.id}" style="cursor:pointer">${esc(r.t.name)}</a>`},
+    {key: 'kat', label: 'Kategorie', v: r => r.t.kategorie},
+    {key: 'n', label: 'Personen', n: 1, v: r => r.n},
+    {key: 'tb', label: 'Teambudget Betreuung', n: 1, v: r => r.tb, h: r => r.tb ? chf0(r.tb) : '<span class="muted">–</span>'},
+    {key: 'pb', label: 'Budget Personen', n: 1, v: r => r.pb, h: r => chf0(r.pb)},
+    {key: 'diff', label: 'Differenz', n: 1, v: r => r.tb - r.pb, h: r => r.tb ? `<span class="${r.tb - r.pb < 0 ? 'neg' : ''}">${chf0(r.tb - r.pb)}</span>` : '<span class="muted">–</span>'},
+    {key: 'i1', label: 'Ist 1. HJ', n: 1, v: r => r.i1, h: r => chf0(r.i1)},
+    {key: 'i2', label: 'Ist 2. HJ', n: 1, v: r => r.i2, h: r => chf0(r.i2)},
+    {key: 'aus', label: 'Ausschöpfung', n: 1, v: r => r.pb ? (r.i1 + r.i2) / r.pb : 0, h: r => pct(r.i1 + r.i2, r.pb)},
+  ], rows, {foot: {team: 'Total', tb: sum('tb'), pb: sum('pb'), i1: sum('i1'), i2: sum('i2'), diff: chf0(rows.reduce((a, r) => a + r.tb - r.pb, 0))}});
+}
+
+V.teambudget = () => {
+  const s = S();
+  const groups = [...new Set(D.budgetPositionen.map(p => p.gruppe))];
+  const teams = D.teams.filter(t => t.aktiv !== false || s.teamBudget[t.id]);
+  const rows = teams.map(t => { const r = {t}; groups.forEach(g => r[g] = teamBudgetSum(s, t.id, g)); r.aufw = teamAufwand(s, t.id); r.ertr = teamErtrag(s, t.id); r.db = r.ertr - r.aufw; r.sp = num((s.teamEckdaten[t.id] || {}).spieler); return r; });
+  const cols = [{key: 'team', label: 'Team', v: r => r.t.name, h: r => `<a data-act="teamDetail" data-id="${r.t.id}" style="cursor:pointer">${esc(r.t.name)}</a>`},
+    {key: 'sp', label: 'Spieler/innen', n: 1, v: r => r.sp}]
+    .concat(groups.map(g => ({key: g, label: g, n: 1, v: r => r[g], h: r => chf0(r[g])})))
+    .concat([{key: 'aufw', label: 'Aufwand total', n: 1, v: r => r.aufw, h: r => `<b>${chf0(r.aufw)}</b>`},
+      {key: 'db', label: 'DB (Ertrag − Aufwand)', n: 1, v: r => r.db, h: r => `<span class="${r.db < 0 ? 'neg' : 'pos'}">${chf0(r.db)}</span>`},
+      {key: 'kps', label: 'Kosten / Spieler', n: 1, v: r => r.sp ? (r.aufw) / r.sp : 0, h: r => r.sp ? chf0(r.aufw / r.sp) : '–'},
+      {key: 'x', label: '', ns: 1, h: r => `<button class="btn sm" data-act="teamDetail" data-id="${r.t.id}">bearbeiten</button>`}]);
+  const foot = {team: 'Total', sp: rows.reduce((a, r) => a + r.sp, 0)};
+  groups.concat(['aufw', 'db']).forEach(g => foot[g] = chf0(rows.reduce((a, r) => a + r[g], 0)));
+  return pageTop('Budget Teams') +
+    `<div class="card"><h2>Teambudget ${esc(s.name)} <small>Klick auf ein Team für Positionen und Eckdaten</small></h2>
+     <div class="toolbar"><span class="hint">Einnahmen = J+S, Sponsoring, Mitgliederbeiträge. Gruppen und Positionen wie im Excel "Budget Sport".</span><span class="sp"></span><button class="btn" data-act="csvTeams">CSV exportieren</button></div>
+     ${table('teamb', cols, rows, {foot})}</div>
+     <div class="card"><h2>Personalbudget pro Team</h2>${teamCompareTable(s)}</div>`;
+};
+
+V.personenbudget = () => {
+  const s = S();
+  let rows = s.zuordnungen.map(z => ({z, p: idx.p[z.personId]}));
+  const ft = ui.q.pbTeam || '', ff = ui.q.pbFkt || '';
+  rows = rows.filter(r => match('pb', pname(r.p), tname(r.z.teamId), fname(r.z.funktionId), r.z.rolle) && (!ft || r.z.teamId === ft) && (!ff || idx.f[r.z.funktionId]?.bereich === ff));
+  const bereiche = [...new Set(D.funktionen.map(f => f.bereich))];
+  const tot = k => chf0(rows.reduce((a, r) => a + k(r), 0));
+  return pageTop('Budget Personen') +
+    `<div class="card"><h2>Zuordnungen ${esc(s.name)} <small>Person × Team × Funktion, mit Ansatz und Jahresbudget</small></h2>
+    <div class="toolbar">${searchBox('pb')}
+      <select data-qs="pbTeam"><option value="">Alle Teams</option>${D.teams.map(t => `<option value="${t.id}" ${ft === t.id ? 'selected' : ''}>${esc(t.name)}</option>`).join('')}</select>
+      <select data-qs="pbFkt"><option value="">Alle Bereiche</option>${bereiche.map(b => `<option ${ff === b ? 'selected' : ''}>${esc(b)}</option>`).join('')}</select>
+      <span class="sp"></span><button class="btn" data-act="csvZuordnungen">CSV</button><button class="btn pri" data-act="zuEdit">+ Zuordnung</button></div>
+    ${table('pb', [
+      {key: 'person', label: 'Person', v: r => pnameRev(r.p), h: r => r.p ? `<a data-act="personDetail" data-id="${r.p.id}" style="cursor:pointer">${esc(pnameRev(r.p))}</a>` : '<span class="tag red">offen</span>'},
+      {key: 'team', label: 'Team', v: r => tname(r.z.teamId)},
+      {key: 'fkt', label: 'Funktion', v: r => r.z.rolle || fname(r.z.funktionId)},
+      {key: 'art', label: 'Abrechnung', v: r => art(r.z), h: r => `<span class="tag ${ARTtag[art(r.z)]}">${ART[art(r.z)]}</span>`},
+      {key: 'js', label: 'J+S', n: 1, v: r => art(r.z) === 'einheiten' ? num(r.z.js) : '', h: r => art(r.z) === 'einheiten' ? num(r.z.js) : ''},
+      {key: 'treue', label: 'Treue', n: 1, v: r => art(r.z) === 'einheiten' ? num(r.z.treue) : ''},
+      {key: 'faktor', label: 'Faktor', n: 1, v: r => art(r.z) === 'einheiten' ? num(r.z.faktor) : ''},
+      {key: 'ansatz', label: 'Ansatz', n: 1, v: r => art(r.z) === 'einheiten' ? ansatz(r.z) : art(r.z) === 'einsatz' ? ansatzE(r.z) : 0, h: r => art(r.z) === 'einheiten' ? chf(ansatz(r.z)) : art(r.z) === 'einsatz' ? chf(ansatzE(r.z)) : ''},
+      {key: 'menge', label: 'Menge Budget', n: 1, v: r => art(r.z) === 'einheiten' ? num(r.z.einheitenBudget) : art(r.z) === 'einsatz' ? num(r.z.budgetEinsaetze) : '', h: r => art(r.z) === 'einheiten' ? num(r.z.einheitenBudget) + ' Einh.' : art(r.z) === 'einsatz' ? num(r.z.budgetEinsaetze) + ' Eins.' : `${chf0(r.z.pauschaleH1)} / ${chf0(r.z.pauschaleH2)}`},
+      {key: 'budget', label: 'Budget Jahr', n: 1, v: r => budget(r.z), h: r => `<b>${chf0(budget(r.z))}</b>${isSet(r.z.budgetManuell) ? ' <span class="tag" title="Betrag manuell gesetzt">m</span>' : ''}`},
+      {key: 'ist', label: 'Ist (1.+2. HJ)', n: 1, v: r => istJahr(s, r.z), h: r => chf0(istJahr(s, r.z))},
+      {key: 'notiz', label: 'Notiz', v: r => r.z.notiz, h: r => `<span class="muted" title="${esc(r.z.notiz)}">${esc((r.z.notiz || '').slice(0, 28))}</span>`},
+      {key: 'x', label: '', ns: 1, h: r => `<button class="btn sm" data-act="zuEdit" data-id="${r.z.id}">bearbeiten</button>`},
+    ], rows, {foot: {person: `${rows.length} Zuordnungen`, budget: tot(r => budget(r.z)), ist: tot(r => istJahr(s, r.z))}, sort: {key: 'team'}})}
+    <p class="hint">Ansatz pro Einheit = (Grundbeitrag + J+S + Vereinstreue) × Faktor. Budget = Einheiten Budget × Ansatz, ausser ein Betrag ist manuell gesetzt (m).</p></div>`;
+};
+
+V.erfassung = () => {
+  const s = S(), hj = ui.hj;
+  const ft = ui.q.erTeam || '', fa = ui.q.erArt || '';
+  let rows = s.zuordnungen.map(z => ({z, p: idx.p[z.personId], e: erf(s, hj, z.id) || {}}))
+    .filter(r => match('er', pname(r.p), tname(r.z.teamId), r.z.rolle) && (!ft || r.z.teamId === ft) && (!fa || art(r.z) === fa));
+  const total = rows.reduce((a, r) => a + ist(s, r.z, hj), 0);
+  const inp = (r, f, w = 70, type = 'number') => `<input type="${type}" ${type === 'number' ? 'step="any"' : ''} style="width:${w}px" data-erf="${r.z.id}" data-f="${f}" value="${esc(r.e[f] ?? '')}">`;
+  return pageTop('Erfassung Einsätze', true, true) +
+    `<div class="card"><h2>${HJ[hj]} – ${esc(s.name)} <small>Einheiten aus der NDS, Einsätze, Pauschalen bestätigen</small></h2>
+    <div class="toolbar">${searchBox('er')}
+      <select data-qs="erTeam"><option value="">Alle Teams</option>${D.teams.map(t => `<option value="${t.id}" ${ft === t.id ? 'selected' : ''}>${esc(t.name)}</option>`).join('')}</select>
+      <select data-qs="erArt"><option value="">Alle Abrechnungsarten</option>${Object.entries(ART).map(([k, v]) => `<option value="${k}" ${fa === k ? 'selected' : ''}>${v}</option>`).join('')}</select>
+      <span class="sp"></span>
+      <button class="btn" data-act="pauschOk">Alle Pauschalen bestätigen</button>
+      <button class="btn pri" data-act="ndsImport">NDS-Import (CSV)</button></div>
+    ${table('er', [
+      {key: 'person', label: 'Person', v: r => pnameRev(r.p)},
+      {key: 'team', label: 'Team', v: r => tname(r.z.teamId)},
+      {key: 'fkt', label: 'Funktion', v: r => r.z.rolle || fname(r.z.funktionId)},
+      {key: 'art', label: 'Art', v: r => art(r.z), h: r => `<span class="tag ${ARTtag[art(r.z)]}">${ART[art(r.z)]}</span>`},
+      {key: 'menge', label: 'Einheiten / Einsätze / OK', ns: 1, h: r => art(r.z) === 'einheiten' ? inp(r, 'einheiten') + ` <span class="hint">× ${chf(ansatz(r.z))}</span>` : art(r.z) === 'einsatz' ? inp(r, 'einsaetze') + ` <span class="hint">× ${chf(ansatzE(r.z))}</span>` : `<label><input type="checkbox" data-erf="${r.z.id}" data-f="ok" ${r.e.ok ? 'checked' : ''}> ${chf0(r.z['pauschale' + hj])}</label>`},
+      {key: 'budgetHj', label: 'Budget Einh./HJ', n: 1, v: r => art(r.z) === 'einheiten' ? num(r.z.einheitenBudget) / 2 : '', h: r => art(r.z) === 'einheiten' ? `<span class="muted">${num(r.z.einheitenBudget) / 2}</span>` : ''},
+      {key: 'manuell', label: 'Betrag manuell', ns: 1, h: r => inp(r, 'manuell', 85)},
+      {key: 'korrektur', label: 'Korrektur ±', ns: 1, h: r => inp(r, 'korrektur', 75)},
+      {key: 'bemerkung', label: 'Bemerkung', ns: 1, h: r => inp(r, 'bemerkung', 150, 'text')},
+      {key: 'ist', label: 'Betrag', n: 1, v: r => ist(s, r.z, hj), h: r => `<b data-istcell="${r.z.id}">${chf(ist(s, r.z, hj))}</b>`},
+    ], rows, {foot: {person: `${rows.length} Zeilen`, ist: `<span id="erTotal">${chf(total)}</span>`}, sort: {key: 'team'}})}
+    <p class="hint">Einheiten = effektive Trainings und Spiele gemäss NDS-Anwesenheitskontrolle. "Betrag manuell" überschreibt die Berechnung, "Korrektur" wird dazugezählt.</p></div>`;
+};
+
+V.auszahlung = () => {
+  const s = S(), hj = ui.hj;
+  const list = personenMitBetrag(s, hj).filter(x => match('az', pname(x.p), x.p.ort));
+  const st = pid => s.belege[hj]?.[pid] || {};
+  const tot = k => chf(list.reduce((a, x) => a + x.a[k], 0));
+  return pageTop('Auszahlung & Belege', true, true) +
+    `<div class="card"><h2>${HJ[hj]} – ${esc(s.name)} <small>Ein Beleg pro Person und Halbjahr</small></h2>
+    <div class="toolbar">${searchBox('az')}<span class="sp"></span>
+      <button class="btn" data-act="csvAuszahlung">Auszahlungsliste CSV</button>
+      <button class="btn" data-act="printListe">Liste drucken</button>
+      <button class="btn pri" data-act="printAlle">Alle Belege drucken / PDF</button></div>
+    ${table('az', [
+      {key: 'person', label: 'Person', v: r => pnameRev(r.p), h: r => `<a data-act="personDetail" data-id="${r.p.id}" style="cursor:pointer">${esc(pnameRev(r.p))}</a>`},
+      {key: 'fkt', label: 'Funktionen', v: r => r.a.pos.map(x => x.z.rolle || fname(x.z.funktionId)).join(', '), h: r => `<span class="muted">${esc(r.a.pos.map(x => `${x.z.rolle || fname(x.z.funktionId)} (${idx.t[x.z.teamId]?.id || ''})`).join(', ').slice(0, 60))}</span>`},
+      {key: 'brutto', label: 'Brutto', n: 1, v: r => r.a.brutto, h: r => chf(r.a.brutto)},
+      {key: 'spesen', label: 'Spesenanteil', n: 1, v: r => r.a.spesen, h: r => chf(r.a.spesen)},
+      {key: 'ahv', label: 'AHV/ALV', n: 1, v: r => r.a.ahv, h: r => r.a.pflicht ? chf(r.a.ahv) : '<span class="muted">–</span>'},
+      {key: 'netto', label: 'Netto', n: 1, v: r => r.a.netto, h: r => `<b>${chf(r.a.netto)}</b>`},
+      {key: 'iban', label: 'IBAN', v: r => r.p.iban, h: r => r.p.iban ? `<span class="muted">${esc(r.p.iban)}</span>` : '<span class="tag red">fehlt</span>'},
+      {key: 'status', label: 'Status', v: r => st(r.p.id).status || 'offen', h: r => `<select data-beleg="${r.p.id}" data-f="status"><option value="offen">offen</option><option value="ausbezahlt" ${st(r.p.id).status === 'ausbezahlt' ? 'selected' : ''}>ausbezahlt</option></select>`},
+      {key: 'datum', label: 'Datum', ns: 1, h: r => `<input type="date" data-beleg="${r.p.id}" data-f="datum" value="${esc(st(r.p.id).datum || '')}">`},
+      {key: 'x', label: '', ns: 1, h: r => `<button class="btn sm" data-act="beleg" data-id="${r.p.id}">Beleg</button>`},
+    ], list.map(x => ({p: x.p, a: x.a})), {foot: {person: `${list.length} Personen`, brutto: tot('brutto'), spesen: tot('spesen'), ahv: tot('ahv'), netto: tot('netto')}})}
+    <p class="hint">AHV/IV/EO/ALV ${chf(D.einstellungen.ahvSatz, 1)} % auf ${D.einstellungen.ahvBasis === 'lohn' ? 'dem Lohnanteil' : 'dem Bruttobetrag'}, wenn der Jahres-Lohnanteil über CHF ${chf0(D.einstellungen.ahvFreigrenze)} liegt oder bei der Person "AHV-pflichtig: ja" gesetzt ist. Einstellbar unter Einstellungen.</p></div>`;
+};
+
+V.statistik = () => {
+  const s = S(); const tabs = {teams: 'Teams', bereiche: 'Bereiche', personen: 'Personen', trainer: 'Trainer-Kennzahlen', saisons: 'Saisonvergleich'};
+  let body = '';
+  if (ui.stat === 'teams') {
+    const rows = teamCompareRows(s).sort((a, b) => b.pb - a.pb);
+    body = `<div class="card"><h2>Personalbudget vs. Ist pro Team</h2>${bars(rows.map(r => ({l: r.t.name, a: r.pb, b: r.i1 + r.i2, t: `${chf0(r.i1 + r.i2)} / ${chf0(r.pb)}`})), ['Budget Personen', 'Ist'])}</div>
+      <div class="card"><h2>Teambudget Aufwand pro Team</h2>${bars(D.teams.filter(t => s.teamBudget[t.id]).map(t => ({l: t.name, a: teamAufwand(s, t.id), b: teamBudgetSum(s, t.id, 'Betreuung'), t: chf0(teamAufwand(s, t.id))})).sort((a, b) => b.a - a.a), ['Aufwand total', 'davon Betreuung'])}</div>`;
+  } else if (ui.stat === 'bereiche') {
+    const g = {}; s.zuordnungen.forEach(z => { const f = idx.f[z.funktionId]; const k = f?.bereich || 'Andere'; g[k] ||= {n: 0, b: 0, i1: 0, i2: 0, p: new Set()}; g[k].n++; g[k].b += budget(z); g[k].i1 += ist(s, z, 'H1'); g[k].i2 += ist(s, z, 'H2'); if (z.personId) g[k].p.add(z.personId); });
+    const a = {}; s.zuordnungen.forEach(z => { const k = ART[art(z)]; a[k] ||= {b: 0, i: 0}; a[k].b += budget(z); a[k].i += istJahr(s, z); });
+    const rows = Object.entries(g).map(([k, v]) => ({k, ...v, pn: v.p.size}));
+    body = `<div class="card"><h2>Nach Bereich</h2>${table('stb', [{key: 'k', label: 'Bereich'}, {key: 'n', label: 'Zuordnungen', n: 1}, {key: 'pn', label: 'Personen', n: 1},
+        {key: 'b', label: 'Budget', n: 1, h: r => chf0(r.b)}, {key: 'i1', label: 'Ist 1. HJ', n: 1, h: r => chf0(r.i1)}, {key: 'i2', label: 'Ist 2. HJ', n: 1, h: r => chf0(r.i2)},
+        {key: 'q', label: 'Ausschöpfung', n: 1, v: r => r.b ? (r.i1 + r.i2) / r.b : 0, h: r => pct(r.i1 + r.i2, r.b)}], rows, {sort: {key: 'b', dir: 'desc'}})}</div>
+      <div class="card"><h2>Nach Abrechnungsart</h2>${bars(Object.entries(a).map(([k, v]) => ({l: k, a: v.b, b: v.i, t: `${chf0(v.i)} / ${chf0(v.b)}`})), ['Budget', 'Ist'])}</div>`;
+  } else if (ui.stat === 'personen') {
+    const ids = [...new Set(s.zuordnungen.filter(z => z.personId).map(z => z.personId))];
+    const rows = ids.map(id => { const zs = s.zuordnungen.filter(z => z.personId === id); return {p: idx.p[id], n: zs.length, teams: [...new Set(zs.map(z => idx.t[z.teamId]?.id))].join(', '), b: zs.reduce((a, z) => a + budget(z), 0), i1: zs.reduce((a, z) => a + ist(s, z, 'H1'), 0), i2: zs.reduce((a, z) => a + ist(s, z, 'H2'), 0), ahv: ahvPflichtig(s, id)}; }).filter(r => r.p);
+    body = `<div class="card"><h2>Top 15 Jahresbudget pro Person</h2>${bars(rows.sort((a, b) => b.b - a.b).slice(0, 15).map(r => ({l: pname(r.p), a: r.b, b: r.i1 + r.i2, t: chf0(r.b)})), ['Budget', 'Ist'])}</div>
+      <div class="card"><h2>Alle Personen</h2>${table('stp', [{key: 'p', label: 'Person', v: r => pnameRev(r.p)}, {key: 'teams', label: 'Teams'}, {key: 'n', label: 'Funktionen', n: 1},
+        {key: 'b', label: 'Budget', n: 1, h: r => chf0(r.b)}, {key: 'i1', label: 'Ist 1. HJ', n: 1, h: r => chf0(r.i1)}, {key: 'i2', label: 'Ist 2. HJ', n: 1, h: r => chf0(r.i2)},
+        {key: 'ahv', label: 'AHV-pflichtig', v: r => r.ahv ? 'ja' : 'nein'}], rows, {sort: {key: 'b', dir: 'desc'}})}</div>`;
+  } else if (ui.stat === 'trainer') {
+    const tz = s.zuordnungen.filter(z => art(z) === 'einheiten');
+    const js = tz.filter(z => num(z.js) >= 10).length;
+    const einhB = tz.reduce((a, z) => a + num(z.einheitenBudget), 0);
+    const einh = hj => tz.reduce((a, z) => a + num(erf(s, hj, z.id)?.einheiten), 0);
+    const avgA = tz.length ? tz.reduce((a, z) => a + ansatz(z), 0) / tz.length : 0;
+    const dist = (k, vals) => vals.map(v => ({l: `${k} ${v}`, a: tz.filter(z => num(z[k === 'Treue' ? 'treue' : k === 'J+S' ? 'js' : 'faktor']) === v).length})).map(x => ({...x, t: x.a + ' Zuordnungen'}));
+    const uniq = k => [...new Set(tz.map(z => num(z[k])))].sort((a, b) => a - b);
+    body = `<div class="kpis">
+        <div class="kpi"><div class="l">Trainer-Zuordnungen</div><div class="v">${tz.length}</div></div>
+        <div class="kpi"><div class="l">J+S-Quote (gültig)</div><div class="v">${pct(js, tz.length)}</div><div class="s">${js} von ${tz.length}</div></div>
+        <div class="kpi"><div class="l">Ø Ansatz pro Einheit</div><div class="v">${chf(avgA)}</div></div>
+        <div class="kpi"><div class="l">Einheiten Budget / Jahr</div><div class="v">${chf0(einhB)}</div></div>
+        <div class="kpi"><div class="l">Einheiten erfasst 1. HJ</div><div class="v">${chf0(einh('H1'))}</div><div class="s">${pct(einh('H1'), einhB / 2)} vom HJ-Budget</div></div>
+        <div class="kpi"><div class="l">Einheiten erfasst 2. HJ</div><div class="v">${chf0(einh('H2'))}</div><div class="s">${pct(einh('H2'), einhB / 2)} vom HJ-Budget</div></div></div>
+      <div class="grid2"><div class="card"><h2>Verteilung J+S-Beitrag</h2>${bars(dist('J+S', uniq('js')))}</div>
+      <div class="card"><h2>Verteilung Vereinstreue</h2>${bars(dist('Treue', uniq('treue')))}</div>
+      <div class="card"><h2>Verteilung Faktor</h2>${bars(dist('Faktor', uniq('faktor')))}</div>
+      <div class="card"><h2>Einheiten Budget vs. erfasst pro Team</h2>${bars(D.teams.map(t => { const z = tz.filter(z => z.teamId === t.id); return {l: t.name, a: z.reduce((a, z) => a + num(z.einheitenBudget), 0), b: z.reduce((a, z) => a + num(erf(s, 'H1', z.id)?.einheiten) + num(erf(s, 'H2', z.id)?.einheiten), 0)}; }).filter(x => x.a).map(x => ({...x, t: `${x.b} / ${x.a}`})), ['Budget', 'erfasst'])}</div></div>`;
+  } else {
+    const rows = D.saisons.map(x => { const zs = x.zuordnungen; return {s: x, n: zs.length, p: new Set(zs.map(z => z.personId).filter(Boolean)).size, b: zs.reduce((a, z) => a + budget(z), 0), i1: zs.reduce((a, z) => a + ist(x, z, 'H1'), 0), i2: zs.reduce((a, z) => a + ist(x, z, 'H2'), 0), tb: D.teams.reduce((a, t) => a + teamAufwand(x, t.id), 0)}; });
+    body = `<div class="card"><h2>Saisons im Vergleich</h2>${table('sts', [{key: 'n0', label: 'Saison', v: r => r.s.name}, {key: 'st', label: 'Status', v: r => r.s.status}, {key: 'n', label: 'Zuordnungen', n: 1}, {key: 'p', label: 'Personen', n: 1},
+      {key: 'tb', label: 'Teambudget Aufwand', n: 1, h: r => chf0(r.tb)}, {key: 'b', label: 'Budget Personen', n: 1, h: r => chf0(r.b)}, {key: 'i1', label: 'Ist 1. HJ', n: 1, h: r => chf0(r.i1)}, {key: 'i2', label: 'Ist 2. HJ', n: 1, h: r => chf0(r.i2)}], rows)}</div>
+      <div class="card"><h2>Budget Personen pro Saison</h2>${bars(rows.map(r => ({l: r.s.name, a: r.b, b: r.i1 + r.i2, t: chf0(r.b)})), ['Budget', 'Ist'])}</div>`;
+  }
+  return pageTop('Statistiken') + `<div class="tabs">${Object.entries(tabs).map(([k, v]) => `<a data-act="stat" data-v="${k}" class="${ui.stat === k ? 'on' : ''}">${v}</a>`).join('')}</div>` + body;
+};
+
+V.personen = () => {
+  const s = S();
+  const rows = D.personen.filter(p => match('pe', p.vorname, p.nachname, p.ort, p.email, p.notiz)).map(p => ({p, zs: s.zuordnungen.filter(z => z.personId === p.id)}));
+  return pageTop('Personen', true, false) +
+    `<div class="card"><h2>Personen <small>${D.personen.length} erfasst, Funktionen/Budget für ${esc(s.name)}</small></h2>
+    <div class="toolbar">${searchBox('pe')}<span class="sp"></span><button class="btn" data-act="csvPersonen">CSV</button><button class="btn pri" data-act="personEdit">+ Person</button></div>
+    ${table('pe', [
+      {key: 'name', label: 'Name', v: r => pnameRev(r.p), h: r => `<a data-act="personDetail" data-id="${r.p.id}" style="cursor:pointer"><b>${esc(r.p.nachname)}</b> ${esc(r.p.vorname)}</a>${r.p.aktiv === false ? ' <span class="tag">inaktiv</span>' : ''}`},
+      {key: 'ort', label: 'Ort', v: r => `${r.p.plz} ${r.p.ort}`.trim()},
+      {key: 'email', label: 'E-Mail', v: r => r.p.email},
+      {key: 'iban', label: 'IBAN', v: r => r.p.iban ? 'ja' : '', h: r => r.p.iban ? '✓' : '<span class="tag red">fehlt</span>'},
+      {key: 'ahv', label: 'AHV', v: r => r.p.ahvPflicht, h: r => ({auto: 'auto', ja: 'pflichtig', nein: 'befreit'})[r.p.ahvPflicht || 'auto']},
+      {key: 'fkt', label: 'Funktionen (Saison)', v: r => r.zs.length, h: r => esc(r.zs.map(z => `${z.rolle || fname(z.funktionId)} ${idx.t[z.teamId] ? '(' + z.teamId + ')' : ''}`).join(', ').slice(0, 70))},
+      {key: 'budget', label: 'Budget Saison', n: 1, v: r => r.zs.reduce((a, z) => a + budget(z), 0), h: r => chf0(r.zs.reduce((a, z) => a + budget(z), 0))},
+      {key: 'x', label: '', ns: 1, h: r => `<button class="btn sm" data-act="personEdit" data-id="${r.p.id}">bearbeiten</button>`},
+    ], rows, {sort: {key: 'name'}})}</div>`;
+};
+
+V.teams = () => {
+  const s = S();
+  const groups = [...new Set(D.budgetPositionen.map(p => p.gruppe))];
+  ui.open ||= {};
+  const showInactive = !!ui.q.teInaktiv;
+  const q = (ui.q.tov || '').toLowerCase().trim();
+  const teams = D.teams.filter(t => showInactive || t.aktiv !== false || s.zuordnungen.some(z => z.teamId === t.id) || s.teamBudget[t.id]);
+  const kats = [...new Set(teams.map(t => t.kategorie || 'Ohne Kategorie'))];
+  let sumTb = 0, sumPb = 0, sumIst = 0, sumN = 0;
+  const block = t => {
+    const zs = s.zuordnungen.filter(z => z.teamId === t.id).sort((a, b) => (fname(a.funktionId) + pnameRev(idx.p[a.personId])).localeCompare(fname(b.funktionId) + pnameRev(idx.p[b.personId]), 'de'));
+    const hit = !q || t.name.toLowerCase().includes(q) || t.id.toLowerCase().includes(q) || zs.some(z => pname(idx.p[z.personId]).toLowerCase().includes(q));
+    if (!hit) return '';
+    const tb = s.teamBudget[t.id] || {}, ek = s.teamEckdaten[t.id] || {};
+    const aufw = teamAufwand(s, t.id), betr = teamBudgetSum(s, t.id, 'Betreuung');
+    const pb = zs.reduce((a, z) => a + budget(z), 0), i1 = zs.reduce((a, z) => a + ist(s, z, 'H1'), 0), i2 = zs.reduce((a, z) => a + ist(s, z, 'H2'), 0);
+    sumTb += aufw; sumPb += pb; sumIst += i1 + i2; sumN += zs.length;
+    const open = q ? true : !!ui.open[t.id];
+    const menge = z => art(z) === 'einheiten' ? `${num(z.einheitenBudget)} Einh. × ${chf(ansatz(z))}` : art(z) === 'einsatz' ? `${num(z.budgetEinsaetze)} Eins. × ${chf(ansatzE(z))}` : `${chf0(z.pauschaleH1)} + ${chf0(z.pauschaleH2)}`;
+    const posRows = groups.map(g => {
+      const ps = D.budgetPositionen.filter(p => p.gruppe === g && num(tb[p.id]));
+      if (!ps.length) return '';
+      const sum = ps.reduce((a, p) => a + num(tb[p.id]), 0);
+      return `<tr class="grp"><td>${esc(g)}</td><td class="n">${chf0(sum)}</td></tr>` + ps.map(p => `<tr><td style="padding-left:22px">${esc(p.name)}</td><td class="n">${chf0(tb[p.id])}</td></tr>`).join('');
+    }).join('');
+    const eck = [['spieler', 'Spieler/innen'], ['einheiten', 'Einheiten/Jahr'], ['staff', 'Staff'], ['trainingsProWoche', 'Trainings/Woche'], ['meisterschaft', 'Meisterschaftsspiele']].filter(([k]) => isSet(ek[k])).map(([k, l]) => `${l}: <b>${num(ek[k])}</b>`).join(' · ');
+    return `<details class="team" data-team="${t.id}" ${open ? 'open' : ''}>
+      <summary><span class="chev">▸</span><span class="tn">${esc(t.name)} <span class="muted" style="font-weight:400">${esc(t.id)}</span>${t.aktiv === false ? ' <span class="tag">inaktiv</span>' : ''}</span>
+        <span class="tk"><small>Personen</small>${zs.length}</span>
+        <span class="tk"><small>Teambudget</small>${chf0(aufw)}</span>
+        <span class="tk"><small>Betreuung</small>${chf0(betr)}</span>
+        <span class="tk"><small>Budget Personen</small>${chf0(pb)}</span>
+        <span class="tk"><small>Ist 1.+2. HJ</small>${chf0(i1 + i2)}</span>
+        <span class="tk"><small>Diff. Betreuung</small><span class="${betr && betr - pb < 0 ? 'neg' : ''}">${betr ? chf0(betr - pb) : '–'}</span></span></summary>
+      <div class="tbody">
+        ${eck ? `<p class="hint" style="margin:0 0 10px">${eck}</p>` : ''}
+        <div class="tgrid">
+          <div><div class="toolbar" style="margin-bottom:6px"><b>Personen</b><span class="sp"></span><button class="btn sm" data-act="zuEdit" data-team="${t.id}">+ Person zuordnen</button></div>
+            <div class="tw" style="max-height:none"><table><thead><tr><th class="ns">Person</th><th class="ns">Funktion</th><th class="ns">Abrechnung</th><th class="ns n">Menge × Ansatz</th><th class="ns n">Budget</th><th class="ns n">Ist 1. HJ</th><th class="ns n">Ist 2. HJ</th><th class="ns"></th></tr></thead><tbody>
+            ${zs.map(z => `<tr><td>${z.personId ? `<a data-act="personDetail" data-id="${z.personId}" style="cursor:pointer">${esc(pnameRev(idx.p[z.personId]))}</a>` : '<span class="tag red">offen</span>'}</td><td>${esc(z.rolle || fname(z.funktionId))}</td><td><span class="tag ${ARTtag[art(z)]}">${ART[art(z)]}</span></td><td class="n muted">${menge(z)}</td><td class="n"><b>${chf0(budget(z))}</b></td><td class="n">${chf0(ist(s, z, 'H1'))}</td><td class="n">${chf0(ist(s, z, 'H2'))}</td><td><button class="btn sm" data-act="zuEdit" data-id="${z.id}">bearbeiten</button></td></tr>`).join('') || '<tr><td colspan="8" class="empty">Noch keine Personen</td></tr>'}
+            </tbody><tfoot><tr><td>Total</td><td></td><td></td><td></td><td class="n">${chf0(pb)}</td><td class="n">${chf0(i1)}</td><td class="n">${chf0(i2)}</td><td></td></tr></tfoot></table></div></div>
+          <div><div class="toolbar" style="margin-bottom:6px"><b>Budgetpositionen</b><span class="sp"></span><button class="btn sm" data-act="teamDetail" data-id="${t.id}">Budget bearbeiten</button></div>
+            <div class="tw" style="max-height:none"><table class="bpos"><tbody>${posRows || '<tr><td class="empty">Kein Teambudget erfasst</td></tr>'}</tbody>
+            ${posRows ? `<tfoot><tr><td>Aufwand total</td><td class="n">${chf0(aufw)}</td></tr>${teamErtrag(s, t.id) ? `<tr><td>Ertrag</td><td class="n">${chf0(teamErtrag(s, t.id))}</td></tr><tr><td>DB</td><td class="n ${teamErtrag(s, t.id) - aufw < 0 ? 'neg' : 'pos'}">${chf0(teamErtrag(s, t.id) - aufw)}</td></tr>` : ''}</tfoot>` : ''}</table></div></div>
+        </div></div></details>`;
+  };
+  const body = kats.map(k => { const h = teams.filter(t => (t.kategorie || 'Ohne Kategorie') === k).map(block).join(''); return h ? `<div class="kat">${esc(k)}</div>${h}` : ''; }).join('');
+  return pageTop('Teams', true) +
+    `<div class="card"><h2>Team-Übersicht ${esc(s.name)} <small>Klick auf ein Team zum Auf- und Zuklappen</small></h2>
+    <div class="toolbar">${searchBox('tov', 'Team oder Person suchen …')}
+      <label class="hint"><input type="checkbox" data-qcheck="teInaktiv" ${showInactive ? 'checked' : ''}> inaktive zeigen</label><span class="sp"></span>
+      <button class="btn" data-act="teamsOpen" data-v="1">Alle aufklappen</button><button class="btn" data-act="teamsOpen" data-v="">Alle zuklappen</button></div>
+    ${body || '<div class="empty">Keine Teams</div>'}
+    <div class="toolbar" style="margin-top:12px;justify-content:flex-end;gap:18px"><span>Personen: <b>${sumN}</b></span><span>Teambudget: <b>${chf0(sumTb)}</b></span><span>Budget Personen: <b>${chf0(sumPb)}</b></span><span>Ist: <b>${chf0(sumIst)}</b></span></div></div>
+    <details class="card stamm" ${ui.open.__stamm ? 'open' : ''} data-team="__stamm"><summary><b>Teams verwalten (Stammdaten)</b></summary><div style="margin-top:12px">
+    <div class="toolbar"><span class="sp"></span><button class="btn pri" data-act="teamEdit">+ Team</button></div>
+    ${table('te', [
+      {key: 'id', label: 'Kürzel'}, {key: 'name', label: 'Name'}, {key: 'kategorie', label: 'Kategorie'},
+      {key: 'aktiv', label: 'Aktiv', v: r => r.aktiv !== false ? 'ja' : 'nein'},
+      {key: 'sp', label: 'Spieler/innen', n: 1, v: r => num((s.teamEckdaten[r.id] || {}).spieler)},
+      {key: 'n', label: 'Personen (Saison)', n: 1, v: r => s.zuordnungen.filter(z => z.teamId === r.id).length},
+      {key: 'aufw', label: 'Teambudget Aufwand', n: 1, v: r => teamAufwand(s, r.id), h: r => chf0(teamAufwand(s, r.id))},
+      {key: 'x', label: '', ns: 1, h: r => `<button class="btn sm" data-act="teamEdit" data-id="${r.id}">bearbeiten</button>`},
+    ], D.teams)}</div></details>`;
+};
+
+V.funktionen = () => pageTop('Funktionen', false) + `<div class="card"><h2>Funktionen <small>Abrechnungsart und Standardansätze</small></h2>
+    <div class="toolbar"><span class="hint">Pro Einheit: Ansatz aus Grundbeitrag, J+S, Vereinstreue und Faktor (pro Zuordnung). Pauschal: Betrag pro Halbjahr. Pro Einsatz: Ansatz × Einsätze, plus Pauschale ab X Einsätzen.</span><span class="sp"></span><button class="btn pri" data-act="fktEdit">+ Funktion</button></div>
+    ${table('fk', [
+      {key: 'name', label: 'Funktion'}, {key: 'bereich', label: 'Bereich'},
+      {key: 'abrechnung', label: 'Abrechnung', h: r => `<span class="tag ${ARTtag[r.abrechnung]}">${ART[r.abrechnung]}</span>`},
+      {key: 'spesenanteil', label: 'Spesenanteil %', n: 1},
+      {key: 'pauschaleHJ', label: 'Pauschale / HJ', n: 1, h: r => r.abrechnung === 'pauschal' ? chf0(r.pauschaleHJ) : ''},
+      {key: 'ansatzEinsatz', label: 'Ansatz / Einsatz', n: 1, h: r => r.abrechnung === 'einsatz' ? chf(r.ansatzEinsatz) : ''},
+      {key: 'bonus', label: 'Pauschale ab Einsätzen', n: 1, h: r => r.abrechnung === 'einsatz' && num(r.bonusAb) ? `${chf0(r.bonus)} ab ${r.bonusAb}` : ''},
+      {key: 'n', label: 'Zuordnungen (Saison)', n: 1, v: r => S().zuordnungen.filter(z => z.funktionId === r.id).length},
+      {key: 'x', label: '', ns: 1, h: r => `<button class="btn sm" data-act="fktEdit" data-id="${r.id}">bearbeiten</button>`},
+    ], D.funktionen)}</div>`;
+
+V.einstellungen = () => {
+  const v = D.verein, E = D.einstellungen;
+  return pageTop('Einstellungen & Daten', false) +
+    `<div class="grid2"><div class="card"><h2>Verein (für Belege)</h2><div class="form">
+      ${fi('v.name', 'Vereinsname', v.name)}${fi('v.kurz', 'Kürzel', v.kurz)}${fi('v.adresse', 'Adresse', v.adresse)}${fi('v.plz', 'PLZ', v.plz)}${fi('v.ort', 'Ort', v.ort)}${fi('v.email', 'E-Mail', v.email)}
+      ${fi('v.visum', 'Visum / Unterschrift Verein', v.visum)}<label class="full">Zahlungshinweis auf Beleg<textarea data-set="v.zahlungshinweis">${esc(v.zahlungshinweis)}</textarea></label></div></div>
+    <div class="card"><h2>Sozialversicherung & Ansätze</h2><div class="form">
+      ${fi('e.ahvSatz', 'AHV/IV/EO/ALV Abzug %', E.ahvSatz, 'number')}${fi('e.ahvFreigrenze', 'Freigrenze Jahres-Lohn CHF', E.ahvFreigrenze, 'number')}
+      <label>Basis AHV-Abzug<select data-set="e.ahvBasis"><option value="total" ${E.ahvBasis === 'total' ? 'selected' : ''}>Bruttobetrag (wie Excel)</option><option value="lohn" ${E.ahvBasis === 'lohn' ? 'selected' : ''}>nur Lohnanteil (ohne Spesen)</option></select></label>
+      ${fi('e.ansatzGrund', 'Grundbeitrag pro Einheit (Standard)', E.ansatzGrund, 'number')}
+      <div class="calc">J+S-Beitrag: 10 = gültige J+S-Anerkennung, 2 = ohne. Vereinstreue: 0–1 Jahre = 0, 2–4 = 2, 5–9 = 4, ab 10 = 6. Faktor 1–5 (Leistungsteams 1.5–5, Youth League 2).</div></div></div></div>
+    <div class="card"><h2>Saisons</h2>
+      ${table('sa', [{key: 'id', label: 'ID'}, {key: 'name', label: 'Name'}, {key: 'status', label: 'Status'}, {key: 'n', label: 'Zuordnungen', n: 1, v: r => r.zuordnungen.length}, {key: 'notiz', label: 'Notiz', h: r => `<span class="muted">${esc((r.notiz || '').slice(0, 80))}</span>`},
+        {key: 'x', label: '', ns: 1, h: r => `<button class="btn sm" data-act="saisonEdit" data-id="${r.id}">bearbeiten</button>`}], D.saisons)}
+      <div class="toolbar" style="margin-top:10px"><button class="btn pri" data-act="saisonNeu">+ Neue Saison</button></div></div>
+    <div class="card"><h2>Daten</h2>
+      <p>Die Daten liegen als CSV-Dateien im Git-Repo <b>fcf-budget</b>, Ordner <code>daten/</code>. ${src ? (readOnly() ? 'Geöffnet im Nur-Lesen-Modus.' : `Verbunden mit Ordner <b>${esc(src.root.name)}</b>. Jede Änderung wird sofort in die Dateien geschrieben.`) : 'Kein Ordner verbunden.'}</p>
+      <p class="hint">Ablauf: vor dem Arbeiten in GitHub Desktop "Pull", danach hier "Neu laden". Nach dem Arbeiten in GitHub Desktop "Commit" und "Push".</p>
+      <div class="toolbar"><button class="btn pri" data-act="connect">Repo-Ordner verbinden</button><button class="btn" data-act="reloadData">Neu laden</button>
+        <button class="btn" data-act="import">Alte Daten übernehmen (.js/.json)</button>
+        <button class="btn" data-act="exportJson">Export JSON</button><button class="btn" data-act="mdExport">Saison als Markdown (berichte/)</button></div></div>`;
+};
+const fi = (k, l, v, type = 'text') => `<label>${esc(l)}<input type="${type}" ${type === 'number' ? 'step="any"' : ''} data-set="${k}" value="${esc(v ?? '')}"></label>`;
+
+/* ---------- Detail-Dialoge ---------- */
+function dialog(title, body, buttons, onSubmit){
+  $('#dlgTitle').textContent = title; $('#dlgBody').innerHTML = body;
+  $('#dlgFoot').innerHTML = buttons || `<button class="btn" value="cancel" formnovalidate>Abbrechen</button><button class="btn pri" value="ok">Speichern</button>`;
+  const dlg = $('#dlg');
+  dlg.onclose = () => { if (dlg.returnValue && dlg.returnValue !== 'cancel' && onSubmit) onSubmit(dlg.returnValue, formData()); };
+  dlg.returnValue = ''; dlg.showModal();
+}
+function formData(){ const o = {}; $('#dlgBody').querySelectorAll('[name]').forEach(el => { o[el.name] = el.type === 'checkbox' ? el.checked : el.value; }); return o; }
+const ff = (name, label, val, type = 'text', cls = '') => `<label class="${cls}">${esc(label)}<input name="${name}" type="${type}" ${type === 'number' ? 'step="any"' : ''} value="${esc(val ?? '')}"></label>`;
+const fs = (name, label, val, opts, cls = '') => `<label class="${cls}">${esc(label)}<select name="${name}">${opts.map(o => Array.isArray(o) ? o : [o, o]).map(([k, l]) => `<option value="${esc(k)}" ${String(val) === String(k) ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></label>`;
+
+function personEdit(id){
+  const p = id ? idx.p[id] : {id: uid('p'), anrede: '', vorname: '', nachname: '', adresse: '', plz: '', ort: '', email: '', telefon: '', iban: '', ahvNr: '', ahvPflicht: 'auto', eintritt: '', notiz: '', aktiv: true};
+  dialog(id ? 'Person bearbeiten' : 'Neue Person', `<div class="form">
+    ${fs('anrede', 'Anrede', p.anrede, ['', 'Herr', 'Frau'])}${ff('vorname', 'Vorname', p.vorname)}${ff('nachname', 'Nachname', p.nachname)}
+    ${ff('adresse', 'Adresse', p.adresse, 'text', 'w2')}${ff('plz', 'PLZ', p.plz)}${ff('ort', 'Ort', p.ort)}${ff('email', 'E-Mail', p.email)}${ff('telefon', 'Telefon', p.telefon)}
+    ${ff('iban', 'IBAN', p.iban, 'text', 'w2')}${ff('ahvNr', 'AHV-Nr.', p.ahvNr)}
+    ${fs('ahvPflicht', 'AHV-Abzug', p.ahvPflicht || 'auto', [['auto', 'automatisch (Freigrenze)'], ['ja', 'immer abziehen'], ['nein', 'nie abziehen']])}
+    ${ff('eintritt', 'Im Verein seit (Jahr)', p.eintritt, 'number')}
+    <label>Status<select name="aktiv"><option value="1">aktiv</option><option value="" ${p.aktiv === false ? 'selected' : ''}>inaktiv</option></select></label>
+    <label class="full">Notiz<textarea name="notiz">${esc(p.notiz)}</textarea></label></div>`,
+    (id ? `<button class="btn" value="del" formnovalidate style="margin-right:auto">Löschen</button>` : '') + `<button class="btn" value="cancel" formnovalidate>Abbrechen</button><button class="btn pri" value="ok">Speichern</button>`,
+    (rv, f) => {
+      if (rv === 'del') {
+        const used = D.saisons.some(s => s.zuordnungen.some(z => z.personId === p.id));
+        if (used && !confirm(`${pname(p)} hat Zuordnungen. Person trotzdem löschen? Die Zuordnungen werden auf "offen" gesetzt.`)) return;
+        D.saisons.forEach(s => s.zuordnungen.forEach(z => { if (z.personId === p.id) z.personId = null; }));
+        D.personen = D.personen.filter(x => x.id !== p.id);
+      } else {
+        Object.assign(p, f, {aktiv: !!f.aktiv});
+        if (!id) D.personen.push(p);
+      }
+      reindex(); persist(); render();
+    });
+}
+
+function personDetail(id){
+  const p = idx.p[id];
+  const hist = D.saisons.flatMap(s => s.zuordnungen.filter(z => z.personId === id).map(z => ({s, z})));
+  const belege = D.saisons.flatMap(s => ['H1', 'H2'].map(hj => ({s, hj, a: abrechnung(s, id, hj)})).filter(x => x.a.brutto));
+  dialog(pname(p), `<p class="muted">${esc([p.adresse, `${p.plz} ${p.ort}`.trim(), p.email, p.telefon].filter(Boolean).join(' · '))}<br>IBAN: ${esc(p.iban || 'fehlt')}${p.ahvNr ? ' · AHV-Nr. ' + esc(p.ahvNr) : ''}</p>
+    <h4>Funktionen</h4>${table('pd1', [{key: 's', label: 'Saison', v: r => r.s.name}, {key: 't', label: 'Team', v: r => tname(r.z.teamId)}, {key: 'f', label: 'Funktion', v: r => r.z.rolle || fname(r.z.funktionId)},
+      {key: 'b', label: 'Budget', n: 1, v: r => budget(r.z), h: r => chf0(budget(r.z))}, {key: 'i', label: 'Ist', n: 1, v: r => istJahr(r.s, r.z), h: r => chf0(istJahr(r.s, r.z))}], hist)}
+    <h4>Auszahlungen</h4>${table('pd2', [{key: 's', label: 'Saison', v: r => r.s.name}, {key: 'hj', label: 'Halbjahr', v: r => HJk[r.hj]}, {key: 'b', label: 'Brutto', n: 1, h: r => chf(r.a.brutto)},
+      {key: 'n', label: 'Netto', n: 1, h: r => chf(r.a.netto)}, {key: 'st', label: 'Status', v: r => r.s.belege[r.hj]?.[id]?.status || 'offen'},
+      {key: 'x', label: '', ns: 1, h: r => `<button class="btn sm" type="button" data-act="beleg" data-id="${id}" data-s="${r.s.id}" data-hj="${r.hj}">Beleg</button>`}], belege)}`,
+    `<button class="btn" value="edit">Bearbeiten</button><button class="btn pri" value="cancel">Schliessen</button>`,
+    rv => { if (rv === 'edit') setTimeout(() => personEdit(id), 0); });
+}
+
+function zuEdit(id, preTeam){
+  const s = S();
+  const z = id ? s.zuordnungen.find(z => z.id === id) : {id: uid('z'), personId: null, teamId: preTeam || D.teams[0]?.id, funktionId: 'TR', rolle: '', trainings: 0, spiele: 0, einheitenBudget: 0, grund: D.einstellungen.ansatzGrund || 10, js: 10, treue: 0, faktor: 1, pauschaleH1: 0, pauschaleH2: 0, ansatzEinsatz: 0, budgetEinsaetze: 0, budgetManuell: null, notiz: ''};
+  const persOpts = [['', '– offen –']].concat([...D.personen].sort((a, b) => pnameRev(a).localeCompare(pnameRev(b), 'de')).map(p => [p.id, pnameRev(p)]));
+  dialog(id ? 'Zuordnung bearbeiten' : 'Neue Zuordnung', `<div class="form" id="zuForm">
+    ${fs('personId', 'Person', z.personId || '', persOpts, 'w2')}${fs('teamId', 'Team', z.teamId, D.teams.map(t => [t.id, t.name]))}
+    ${fs('funktionId', 'Funktion', z.funktionId, D.funktionen.map(f => [f.id, `${f.name} (${ART[f.abrechnung]})`]))}${ff('rolle', 'Bezeichnung (z. B. Haupttrainer)', z.rolle)}
+    <div class="calc" style="background:none;padding:0;font-weight:600" data-show="einheiten">Pro Einheit</div>
+    ${ff('trainings', 'Trainings / Jahr', z.trainings, 'number', 'x-einheiten')}${ff('spiele', 'Spiele / Jahr', z.spiele, 'number', 'x-einheiten')}${ff('einheitenBudget', 'Einheiten Budget', z.einheitenBudget, 'number', 'x-einheiten')}
+    ${ff('grund', 'Grundbeitrag', z.grund, 'number', 'x-einheiten')}
+    <label class="x-einheiten">J+S<input name="js" type="number" step="any" value="${esc(z.js)}" list="jsl"><datalist id="jsl">${D.einstellungen.jsWerte.map(j => `<option value="${j.wert}">${esc(j.label)}</option>`).join('')}</datalist></label>
+    <label class="x-einheiten">Vereinstreue<input name="treue" type="number" step="any" value="${esc(z.treue)}"><button type="button" class="btn sm" data-act="treueCalc" style="margin-top:3px">aus Eintrittsjahr</button></label>
+    ${ff('faktor', 'Faktor', z.faktor, 'number', 'x-einheiten')}
+    ${ff('pauschaleH1', 'Pauschale 1. HJ', z.pauschaleH1, 'number', 'x-pauschal')}${ff('pauschaleH2', 'Pauschale 2. HJ', z.pauschaleH2, 'number', 'x-pauschal')}
+    ${ff('ansatzEinsatz', 'Ansatz pro Einsatz (leer = Standard)', z.ansatzEinsatz || '', 'number', 'x-einsatz')}${ff('budgetEinsaetze', 'Einsätze Budget / Jahr', z.budgetEinsaetze, 'number', 'x-einsatz')}
+    ${ff('budgetManuell', 'Budget manuell (überschreibt)', z.budgetManuell ?? '', 'number')}
+    <label class="full">Notiz<input name="notiz" value="${esc(z.notiz)}"></label>
+    <div class="calc" id="zuCalc"></div></div>`,
+    (id ? `<button class="btn" value="del" formnovalidate style="margin-right:auto">Löschen</button><button class="btn" value="copy">Als Kopie speichern</button>` : '') + `<button class="btn" value="cancel" formnovalidate>Abbrechen</button><button class="btn pri" value="ok">Speichern</button>`,
+    (rv, f) => {
+      if (rv === 'del') { if (!confirm('Zuordnung löschen?')) return; s.zuordnungen = s.zuordnungen.filter(x => x.id !== z.id); ['H1', 'H2'].forEach(h => delete s.erfassung[h][z.id]); }
+      else {
+        const t = rv === 'copy' ? {...z, id: uid('z')} : z;
+        applyZu(t, f);
+        if (!id || rv === 'copy') s.zuordnungen.push(t);
+      }
+      persist(); render();
+    });
+  const upd = () => {
+    const f = formData(); const t = applyZu({...z}, f); const a = art(t);
+    document.querySelectorAll('#zuForm [class*="x-"]').forEach(el => el.style.display = el.classList.contains('x-' + a) ? '' : 'none');
+    document.querySelectorAll('#zuForm [data-show]').forEach(el => el.style.display = el.dataset.show === a ? '' : 'none');
+    $('#zuCalc').innerHTML = (a === 'einheiten' ? `Ansatz pro Einheit: (${num(t.grund)} + ${num(t.js)} + ${num(t.treue)}) × ${num(t.faktor)} = <b>CHF ${chf(ansatz(t))}</b><br>` : a === 'einsatz' ? `Ansatz pro Einsatz: <b>CHF ${chf(ansatzE(t))}</b><br>` : '') +
+      `Budget berechnet: CHF ${chf(budgetCalc(t))}` + (isSet(t.budgetManuell) ? ` · <b>Budget manuell: CHF ${chf(t.budgetManuell)}</b>` : ` · <b>Jahresbudget: CHF ${chf(budget(t))}</b>`);
+  };
+  const form = $('#zuForm');
+  form.addEventListener('input', e => {
+    if (e.target.name === 'trainings' || e.target.name === 'spiele') form.querySelector('[name=einheitenBudget]').value = num(form.querySelector('[name=trainings]').value) + num(form.querySelector('[name=spiele]').value);
+    if (e.target.name === 'funktionId' && !id) { const f = idx.f[e.target.value]; if (f?.abrechnung === 'pauschal') { form.querySelector('[name=pauschaleH1]').value = f.pauschaleHJ; form.querySelector('[name=pauschaleH2]').value = f.pauschaleHJ; } }
+    upd();
+  });
+  form.addEventListener('change', upd);
+  upd();
+}
+function applyZu(z, f){
+  ['trainings', 'spiele', 'einheitenBudget', 'grund', 'js', 'treue', 'faktor', 'pauschaleH1', 'pauschaleH2', 'ansatzEinsatz', 'budgetEinsaetze'].forEach(k => z[k] = num(f[k]));
+  z.personId = f.personId || null; z.teamId = f.teamId; z.funktionId = f.funktionId; z.rolle = f.rolle; z.notiz = f.notiz;
+  z.budgetManuell = isSet(f.budgetManuell) ? num(f.budgetManuell) : null;
+  return z;
+}
+function treueCalc(){
+  const form = $('#zuForm'); const p = idx.p[form.querySelector('[name=personId]').value];
+  if (!p || !num(p.eintritt)) { toast('Bei der Person ist kein Eintrittsjahr erfasst'); return; }
+  const jahre = parseInt(S().id) - num(p.eintritt);
+  const st = D.einstellungen.treueStufen.find(x => jahre <= x.bis) || {wert: 0};
+  form.querySelector('[name=treue]').value = st.wert; form.dispatchEvent(new Event('input')); toast(`${jahre} Jahre im Verein → ${st.wert}`);
+}
+
+function teamEdit(id){
+  const t = id ? idx.t[id] : {id: '', name: '', kategorie: '', aktiv: true};
+  const kats = [...new Set(D.teams.map(t => t.kategorie))];
+  dialog(id ? 'Team bearbeiten' : 'Neues Team', `<div class="form">${ff('id', 'Kürzel (eindeutig)', t.id)}${ff('name', 'Name', t.name, 'text', 'w2')}
+    <label>Kategorie<input name="kategorie" list="katl" value="${esc(t.kategorie)}"><datalist id="katl">${kats.map(k => `<option>${esc(k)}</option>`).join('')}</datalist></label>
+    <label>Status<select name="aktiv"><option value="1">aktiv</option><option value="" ${t.aktiv === false ? 'selected' : ''}>inaktiv</option></select></label></div>`,
+    (id ? `<button class="btn" value="del" formnovalidate style="margin-right:auto">Löschen</button>` : '') + `<button class="btn" value="cancel" formnovalidate>Abbrechen</button><button class="btn pri" value="ok">Speichern</button>`,
+    (rv, f) => {
+      if (rv === 'del') {
+        if (D.saisons.some(s => s.zuordnungen.some(z => z.teamId === t.id))) { alert('Das Team hat Zuordnungen und kann nicht gelöscht werden. Setze es auf inaktiv.'); return; }
+        D.teams = D.teams.filter(x => x.id !== t.id);
+      } else {
+        const nid = f.id.trim() || f.name.trim().slice(0, 8);
+        if (nid !== t.id && idx.t[nid]) { alert('Kürzel existiert schon'); return; }
+        if (id && nid !== id) D.saisons.forEach(s => { s.zuordnungen.forEach(z => { if (z.teamId === id) z.teamId = nid; }); if (s.teamBudget[id]) { s.teamBudget[nid] = s.teamBudget[id]; delete s.teamBudget[id]; } if (s.teamEckdaten[id]) { s.teamEckdaten[nid] = s.teamEckdaten[id]; delete s.teamEckdaten[id]; } });
+        Object.assign(t, {id: nid, name: f.name, kategorie: f.kategorie, aktiv: !!f.aktiv});
+        if (!id) D.teams.push(t);
+      }
+      reindex(); persist(); render();
+    });
+}
+
+const ECK = [['spieler', 'Spieler/innen'], ['teams', 'Anzahl Teams'], ['beitrag', 'Mitgliederbeitrag'], ['meisterschaft', 'Meisterschaftsspiele'], ['testspiele', 'Testspiele'], ['turniere', 'PMF Turniere'], ['trainingsProWoche', 'Trainings / Woche'], ['wochen', 'Trainingswochen / Jahr'], ['atTt', 'AT/TT pro Woche'], ['einheiten', 'Einheiten / Jahr'], ['staff', 'Staff pro Einheit']];
+function teamDetail(id){
+  const s = S(), t = idx.t[id]; const tb = s.teamBudget[id] || {}, ek = s.teamEckdaten[id] || {};
+  const groups = [...new Set(D.budgetPositionen.map(p => p.gruppe))];
+  const zs = s.zuordnungen.filter(z => z.teamId === id);
+  dialog(`${t.name} – ${s.name}`, `<h4 style="margin-top:0">Eckdaten</h4><div class="form">${ECK.map(([k, l]) => ff('eck.' + k, l, ek[k] ?? '', 'number')).join('')}</div>
+    ${groups.map(g => `<h4>${esc(g)}</h4><div class="form">${D.budgetPositionen.filter(p => p.gruppe === g).map(p => ff('pos.' + p.id, p.name, tb[p.id] ?? '', 'number')).join('')}</div>`).join('')}
+    <h4>Personen (${zs.length})</h4>${table('td', [{key: 'p', label: 'Person', v: r => pnameRev(idx.p[r.personId])}, {key: 'f', label: 'Funktion', v: r => r.rolle || fname(r.funktionId)}, {key: 'b', label: 'Budget', n: 1, v: r => budget(r), h: r => chf0(budget(r))}, {key: 'i', label: 'Ist', n: 1, v: r => istJahr(s, r), h: r => chf0(istJahr(s, r))}], zs)}`,
+    null, (rv, f) => {
+      const nb = {}, ne = {};
+      Object.entries(f).forEach(([k, v]) => { if (!isSet(v)) return; if (k.startsWith('pos.')) nb[k.slice(4)] = num(v); if (k.startsWith('eck.')) ne[k.slice(4)] = num(v); });
+      s.teamBudget[id] = nb; s.teamEckdaten[id] = ne; persist(); render();
+    });
+}
+
+function fktEdit(id){
+  const f = id ? idx.f[id] : {id: '', name: '', bereich: '', abrechnung: 'pauschal', spesenanteil: 0, pauschaleHJ: 0, ansatzEinsatz: 0, bonusAb: 0, bonus: 0};
+  const ber = [...new Set(D.funktionen.map(f => f.bereich))];
+  dialog(id ? 'Funktion bearbeiten' : 'Neue Funktion', `<div class="form">${ff('id', 'Kürzel', f.id)}${ff('name', 'Name', f.name, 'text', 'w2')}
+    <label>Bereich<input name="bereich" list="berl" value="${esc(f.bereich)}"><datalist id="berl">${ber.map(k => `<option>${esc(k)}</option>`).join('')}</datalist></label>
+    ${fs('abrechnung', 'Abrechnung', f.abrechnung, Object.entries(ART))}${ff('spesenanteil', 'Spesenanteil % (nicht AHV-pflichtig)', f.spesenanteil, 'number')}
+    ${ff('pauschaleHJ', 'Standard-Pauschale pro HJ', f.pauschaleHJ, 'number')}${ff('ansatzEinsatz', 'Ansatz pro Einsatz', f.ansatzEinsatz, 'number')}
+    ${ff('bonusAb', 'Zusatzpauschale ab Einsätzen', f.bonusAb, 'number')}${ff('bonus', 'Zusatzpauschale CHF', f.bonus, 'number')}</div>`,
+    (id ? `<button class="btn" value="del" formnovalidate style="margin-right:auto">Löschen</button>` : '') + `<button class="btn" value="cancel" formnovalidate>Abbrechen</button><button class="btn pri" value="ok">Speichern</button>`,
+    (rv, v) => {
+      if (rv === 'del') { if (D.saisons.some(s => s.zuordnungen.some(z => z.funktionId === f.id))) { alert('Funktion wird verwendet und kann nicht gelöscht werden.'); return; } D.funktionen = D.funktionen.filter(x => x.id !== f.id); }
+      else {
+        const nid = v.id.trim() || uid('f');
+        if (nid !== f.id && idx.f[nid]) { alert('Kürzel existiert schon'); return; }
+        if (id && nid !== id) D.saisons.forEach(s => s.zuordnungen.forEach(z => { if (z.funktionId === id) z.funktionId = nid; }));
+        Object.assign(f, {id: nid, name: v.name, bereich: v.bereich, abrechnung: v.abrechnung, spesenanteil: num(v.spesenanteil), pauschaleHJ: num(v.pauschaleHJ), ansatzEinsatz: num(v.ansatzEinsatz), bonusAb: num(v.bonusAb), bonus: num(v.bonus)});
+        if (!id) D.funktionen.push(f);
+      }
+      reindex(); persist(); render();
+    });
+}
+
+function saisonEdit(id){
+  const s = D.saisons.find(x => x.id === id);
+  dialog('Saison bearbeiten', `<div class="form">${ff('name', 'Name', s.name, 'text', 'w2')}${fs('status', 'Status', s.status, ['planung', 'laufend', 'abgeschlossen'])}<label class="full">Notiz<textarea name="notiz">${esc(s.notiz)}</textarea></label></div>`,
+    `<button class="btn" value="del" formnovalidate style="margin-right:auto">Saison löschen</button><button class="btn" value="cancel" formnovalidate>Abbrechen</button><button class="btn pri" value="ok">Speichern</button>`,
+    (rv, f) => {
+      if (rv === 'del') { if (D.saisons.length < 2) { alert('Mindestens eine Saison muss bleiben.'); return; } if (!confirm(`${s.name} mit allen Zuordnungen, Erfassungen und Belegen löschen?`)) return; D.saisons = D.saisons.filter(x => x !== s); migrate(); }
+      else Object.assign(s, f);
+      persist(); render();
+    });
+}
+function saisonNeu(){
+  const last = D.saisons[D.saisons.length - 1]; const y = parseInt(last.id) + 1 || new Date().getFullYear();
+  const nid = `${y}-${String(y + 1).slice(2)}`;
+  dialog('Neue Saison', `<div class="form">${ff('id', 'ID', nid)}${ff('name', 'Name', `Saison ${y}/${String(y + 1).slice(2)}`)}
+    ${fs('von', 'Vorlage', last.id, [['', 'leer starten']].concat(D.saisons.map(s => [s.id, s.name])))}
+    <label>Übernehmen<select name="was"><option value="beides">Zuordnungen und Teambudget</option><option value="zu">nur Zuordnungen</option><option value="tb">nur Teambudget</option></select></label>
+    <p class="hint full">Erfassungen und Belege werden nie kopiert. Inaktive Personen und Teams werden ausgelassen.</p></div>`, null,
+    (rv, f) => {
+      if (D.saisons.some(s => s.id === f.id)) { alert('Saison existiert schon'); return; }
+      const v = D.saisons.find(s => s.id === f.von);
+      const n = {id: f.id, name: f.name, status: 'planung', teamBudget: {}, teamEckdaten: {}, zuordnungen: [], erfassung: {H1: {}, H2: {}}, belege: {H1: {}, H2: {}}, notiz: v ? `Vorlage: ${v.name}` : ''};
+      if (v && f.was !== 'tb') n.zuordnungen = v.zuordnungen.filter(z => idx.t[z.teamId]?.aktiv !== false && (!z.personId || idx.p[z.personId]?.aktiv !== false)).map(z => ({...z, id: uid('z')}));
+      if (v && f.was !== 'zu') { n.teamBudget = JSON.parse(JSON.stringify(v.teamBudget)); n.teamEckdaten = JSON.parse(JSON.stringify(v.teamEckdaten)); }
+      D.saisons.push(n); D.saisons.sort((a, b) => a.id.localeCompare(b.id)); ui.saison = n.id; persist(); render(); toast(n.name + ' angelegt');
+    });
+}
+
+/* ---------- NDS-Import ---------- */
+function parseCSV(text){
+  text = text.replace(/^﻿/, '');
+  const first = text.split(/\r?\n/)[0] || '';
+  const sep = [';', '\t', ','].sort((a, b) => first.split(b).length - first.split(a).length)[0];
+  const rows = []; let row = [], cur = '', q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) { if (c === '"') { if (text[i + 1] === '"') { cur += '"'; i++; } else q = false; } else cur += c; }
+    else if (c === '"') q = true;
+    else if (c === sep) { row.push(cur); cur = ''; }
+    else if (c === '\n' || c === '\r') { if (c === '\r' && text[i + 1] === '\n') i++; row.push(cur); rows.push(row); row = []; cur = ''; }
+    else cur += c;
+  }
+  if (cur || row.length) { row.push(cur); rows.push(row); }
+  return rows.filter(r => r.some(x => x.trim()));
+}
+let nds = null;
+function ndsImport(){ $('#csvIn').value = ''; $('#csvIn').click(); }
+function ndsLoaded(text, fileName){
+  const rows = parseCSV(text); if (rows.length < 2) { toast('CSV leer oder nicht lesbar'); return; }
+  const head = rows[0].map(h => h.trim());
+  const guess = re => { const i = head.findIndex(h => re.test(h)); return i < 0 ? '' : String(i); };
+  nds = {rows: rows.slice(1), head, fileName};
+  const opts = [['', '–']].concat(head.map((h, i) => [String(i), h || `Spalte ${i + 1}`]));
+  dialog('NDS-Import: Spalten zuordnen', `<p class="hint">Datei: ${esc(fileName)} · ${rows.length - 1} Zeilen · Ziel: ${HJ[ui.hj]}, ${esc(S().name)}</p><div class="form">
+    ${fs('cName', 'Spalte Name (oder Nachname)', guess(/^(name|nachname|leiter|person)/i), opts)}${fs('cVor', 'Spalte Vorname (optional)', guess(/vorname/i), opts)}
+    ${fs('cAnz', 'Spalte Anzahl Einheiten', guess(/anzahl|einheiten|einsätze|total|anwesen/i), opts)}
+    <label>Wenn keine Anzahl-Spalte<select name="mode"><option value="count">jede Zeile = 1 Einheit</option></select></label>
+    ${fs('cTeam', 'Spalte Gruppe/Team (optional)', guess(/gruppe|team|angebot|kurs/i), opts)}
+    ${fs('ziel', 'Eintragen als', 'set', [['set', 'Einheiten ersetzen'], ['add', 'zu bestehenden Einheiten addieren']])}</div>
+    <h4>Vorschau</h4>${table('ndsprev', head.map((h, i) => ({key: String(i), label: h || `Spalte ${i + 1}`, v: r => r[i], ns: 1})), rows.slice(1, 6))}`,
+    `<button class="btn" value="cancel" formnovalidate>Abbrechen</button><button class="btn pri" value="ok">Weiter</button>`,
+    (rv, f) => setTimeout(() => ndsMatch(f), 0));
+}
+function ndsMatch(f){
+  const s = S(); const agg = {};
+  nds.rows.forEach(r => {
+    const name = ((f.cVor ? (r[+f.cVor] || '') + ' ' : '') + (r[+f.cName] || '')).trim(); if (!name) return;
+    const team = f.cTeam ? (r[+f.cTeam] || '').trim() : '';
+    const k = norm(name) + '|' + team;
+    agg[k] ||= {name, team, n: 0};
+    agg[k].n += f.cAnz ? num(r[+f.cAnz]) : 1;
+  });
+  const byNorm = {}; D.personen.forEach(p => { byNorm[norm(pname(p))] = p; });
+  const ein = s.zuordnungen.filter(z => art(z) === 'einheiten' && z.personId);
+  const items = Object.values(agg).map(a => {
+    let p = byNorm[norm(a.name)];
+    if (!p) { const tok = norm(a.name).split(' '); p = D.personen.find(p => { const pt = norm(pname(p)).split(' '); return pt.every(t => tok.includes(t)) || tok.every(t => pt.includes(t)); }); }
+    const cand = p ? ein.filter(z => z.personId === p.id) : [];
+    let z = cand[0];
+    if (cand.length > 1 && a.team) z = cand.find(z => norm(tname(z.teamId)).split(' ').some(t => t.length > 1 && norm(a.team).includes(t))) || cand[0];
+    return {...a, p, zid: z?.id || ''};
+  });
+  const zOpts = [['', '– nicht übernehmen –']].concat(ein.sort((a, b) => pnameRev(idx.p[a.personId]).localeCompare(pnameRev(idx.p[b.personId]), 'de')).map(z => [z.id, `${pnameRev(idx.p[z.personId])} – ${tname(z.teamId)} (${z.rolle || fname(z.funktionId)})`]));
+  const ok = items.filter(i => i.zid).length;
+  dialog('NDS-Import: Personen zuordnen', `<p>${ok} von ${items.length} Einträgen automatisch zugeordnet. Bitte prüfen und bei Bedarf anpassen.</p>
+    <div class="tw"><table><thead><tr><th class="ns">NDS-Name</th><th class="ns">Gruppe</th><th class="ns n">Einheiten</th><th class="ns">Zuordnung in der App</th></tr></thead><tbody>
+    ${items.map((it, i) => `<tr><td>${esc(it.name)}</td><td class="muted">${esc(it.team)}</td><td class="n"><input name="n${i}" type="number" step="any" value="${it.n}" style="width:70px"></td><td><select name="z${i}" style="max-width:360px">${zOpts.map(([k, l]) => `<option value="${k}" ${k === it.zid ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></td></tr>`).join('')}
+    </tbody></table></div>`, `<button class="btn" value="cancel" formnovalidate>Abbrechen</button><button class="btn pri" value="ok">Übernehmen</button>`,
+    (rv, v) => {
+      const tgt = s.erfassung[ui.hj] ||= {}; const sum = {};
+      items.forEach((it, i) => { const zid = v['z' + i]; if (zid) sum[zid] = (sum[zid] || 0) + num(v['n' + i]); });
+      Object.entries(sum).forEach(([zid, n]) => { const e = tgt[zid] ||= {}; e.einheiten = f.ziel === 'add' ? num(e.einheiten) + n : n; e.bemerkung = e.bemerkung || 'NDS-Import'; });
+      persist(); render(); toast(`${Object.keys(sum).length} Zuordnungen aktualisiert`);
+    });
+}
+
+/* ---------- Beleg ---------- */
+function belegHTML(s, pid, hj){
+  const p = idx.p[pid], a = abrechnung(s, pid, hj), v = D.verein, E = D.einstellungen;
+  const b = s.belege[hj]?.[pid] || {};
+  const nr = `${s.id}-${hj}-${pid}`;
+  const datum = b.datum ? new Date(b.datum).toLocaleDateString('de-CH') : new Date().toLocaleDateString('de-CH');
+  return `<div class="beleg">
+    <div class="bh"><div class="club">${esc(v.name)}<small>${esc([v.adresse, `${v.plz} ${v.ort}`.trim(), v.email].filter(Boolean).join(' · '))}</small></div>
+      <div class="meta">Beleg-Nr. <b>${esc(nr)}</b><br>Datum: ${esc(datum)}<br>${b.status === 'ausbezahlt' ? '<b>ausbezahlt</b>' : 'zur Auszahlung'}</div></div>
+    <div class="addr">${esc(p.anrede || '')}<br><b>${esc(pname(p))}</b><br>${esc(p.adresse || '')}<br>${esc(`${p.plz || ''} ${p.ort || ''}`.trim())}</div>
+    <h2>Abrechnung Entschädigung ${esc(HJ[hj])}</h2>
+    <div class="sub">${esc(s.name)}</div>
+    <table><thead><tr><th>Funktion</th><th>Team</th><th>Berechnung</th><th style="text-align:right">Betrag CHF</th></tr></thead><tbody>
+      ${a.pos.map(x => `<tr><td>${esc(x.z.rolle || fname(x.z.funktionId))}</td><td>${esc(tname(x.z.teamId))}</td><td>${esc(x.detail)}</td><td style="text-align:right">${chf(x.betrag)}</td></tr>`).join('')}
+    </tbody></table>
+    <table class="tot" style="width:60%;margin-left:auto"><tbody>
+      <tr><td>Total Entschädigung brutto</td><td style="text-align:right">${chf(a.brutto)}</td></tr>
+      ${a.spesen ? `<tr><td>davon Spesenanteil pauschal</td><td style="text-align:right">${chf(a.spesen)}</td></tr><tr><td>davon Lohnanteil</td><td style="text-align:right">${chf(a.lohn)}</td></tr>` : ''}
+      ${a.pflicht ? `<tr><td>Abzug AHV/IV/EO/ALV ${chf(E.ahvSatz, 1)} % ${E.ahvBasis === 'lohn' ? 'auf Lohnanteil' : ''}</td><td style="text-align:right">− ${chf(a.ahv)}</td></tr>` : `<tr><td colspan="2" style="color:#666;font-size:9pt">Kein AHV-Abzug (Entschädigung unter der Freigrenze)</td></tr>`}
+      <tr class="net"><td>Auszahlung netto</td><td style="text-align:right">CHF ${chf(a.netto)}</td></tr>
+    </tbody></table>
+    <div class="pay">Zahlung an: <b>${esc(p.iban || 'IBAN fehlt')}</b>, ${esc(pname(p))}${b.datum && b.status === 'ausbezahlt' ? `<br>Ausbezahlt am ${esc(datum)}` : ''}${v.zahlungshinweis ? `<br><span style="color:#555">${esc(v.zahlungshinweis)}</span>` : ''}</div>
+    <div class="sig"><div>Visum ${esc(v.name)}${v.visum ? ' – ' + esc(v.visum) : ''}</div><div>Empfänger/in: ${esc(pname(p))}</div></div>
+    <div class="foot">${esc(v.name)} · ${esc(s.name)} · ${esc(HJ[hj])} · Beleg ${esc(nr)}${p.ahvNr ? ' · AHV-Nr. ' + esc(p.ahvNr) : ''}</div>
+  </div>`;
+}
+function printHTML(html){
+  $('#printArea').innerHTML = html;
+  setTimeout(() => window.print(), 50);
+}
+function showBeleg(pid, sid, hj){
+  const s = D.saisons.find(x => x.id === sid) || S(); hj = hj || ui.hj;
+  dialog('Beleg', `<div style="background:#ddd;padding:10px;overflow:auto"><div style="transform:scale(.8);transform-origin:top left;width:125%">${belegHTML(s, pid, hj)}</div></div>`,
+    `<button class="btn" value="cancel">Schliessen</button><button class="btn pri" value="print">Drucken / PDF</button>`,
+    rv => { if (rv === 'print') printHTML(belegHTML(s, pid, hj)); });
+  $('#dlg').style.width = 'min(900px,96vw)'; $('#dlg').addEventListener('close', () => $('#dlg').style.width = '', {once: true});
+}
+
+/* ---------- Exporte ---------- */
+const csv = rows => '﻿' + rows.map(r => r.map(v => { const s = String(v ?? ''); return /[;"\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }).join(';')).join('\r\n');
+const f2 = v => (Math.round(num(v) * 100) / 100).toFixed(2);
+const EXP = {
+  csvPersonen: () => download('Personen.csv', csv([['ID', 'Anrede', 'Vorname', 'Nachname', 'Adresse', 'PLZ', 'Ort', 'E-Mail', 'Telefon', 'IBAN', 'AHV-Nr', 'AHV', 'Eintritt', 'Aktiv', 'Notiz']].concat(D.personen.map(p => [p.id, p.anrede, p.vorname, p.nachname, p.adresse, p.plz, p.ort, p.email, p.telefon, p.iban, p.ahvNr, p.ahvPflicht, p.eintritt, p.aktiv !== false ? 'ja' : 'nein', p.notiz]))), 'text/csv'),
+  csvZuordnungen: () => { const s = S(); download(`Budget_Personen_${s.id}.csv`, csv([['Person', 'Team', 'Funktion', 'Abrechnung', 'Einheiten Budget', 'Grund', 'J+S', 'Treue', 'Faktor', 'Ansatz', 'Pauschale 1. HJ', 'Pauschale 2. HJ', 'Budget', 'Ist 1. HJ', 'Ist 2. HJ', 'Notiz']].concat(s.zuordnungen.map(z => [pname(idx.p[z.personId]), tname(z.teamId), z.rolle || fname(z.funktionId), ART[art(z)], z.einheitenBudget, z.grund, z.js, z.treue, z.faktor, f2(ansatz(z)), z.pauschaleH1, z.pauschaleH2, f2(budget(z)), f2(ist(s, z, 'H1')), f2(ist(s, z, 'H2')), z.notiz]))), 'text/csv'); },
+  csvTeams: () => { const s = S(); download(`Budget_Teams_${s.id}.csv`, csv([['Team', 'Kategorie'].concat(D.budgetPositionen.map(p => `${p.gruppe}: ${p.name}`), ['Aufwand', 'Ertrag', 'DB'])].concat(D.teams.map(t => [t.name, t.kategorie].concat(D.budgetPositionen.map(p => num((s.teamBudget[t.id] || {})[p.id])), [teamAufwand(s, t.id), teamErtrag(s, t.id), teamErtrag(s, t.id) - teamAufwand(s, t.id)])))), 'text/csv'); },
+  csvAuszahlung: () => { const s = S(); download(`Auszahlung_${s.id}_${ui.hj}.csv`, csv([['Beleg-Nr', 'Anrede', 'Vorname', 'Nachname', 'Adresse', 'PLZ', 'Ort', 'IBAN', 'Funktionen', 'Brutto', 'Spesenanteil', 'Lohnanteil', 'AHV-Abzug', 'Netto', 'Status', 'Datum']].concat(personenMitBetrag(s, ui.hj).map(({p, a}) => [`${s.id}-${ui.hj}-${p.id}`, p.anrede, p.vorname, p.nachname, p.adresse, p.plz, p.ort, p.iban, a.pos.map(x => x.z.rolle || fname(x.z.funktionId)).join(', '), f2(a.brutto), f2(a.spesen), f2(a.lohn), f2(a.ahv), f2(a.netto), s.belege[ui.hj]?.[p.id]?.status || 'offen', s.belege[ui.hj]?.[p.id]?.datum || '']))), 'text/csv'); },
+  exportJson: () => download(`fcf_daten_${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify(D, null, 1), 'application/json'),
+};
+function markdown(s){
+  const L = [`---`, `saison: "${s.id}"`, `status: ${s.status}`, `erstellt: ${new Date().toISOString().slice(0, 10)}`, `tags: [fcf, budget]`, `---`, ``, `# Budget & Auszahlungen ${s.name}`, ``, `> Automatisch erzeugt aus der FCF Budget App. Änderungen bitte in der App machen.`, ``];
+  const zs = s.zuordnungen, bud = zs.reduce((a, z) => a + budget(z), 0);
+  L.push(`## Übersicht`, ``, `| Kennzahl | CHF |`, `|---|---:|`, `| Budget Personen | ${chf0(bud)} |`, `| Ist 1. HJ | ${chf0(zs.reduce((a, z) => a + ist(s, z, 'H1'), 0))} |`, `| Ist 2. HJ | ${chf0(zs.reduce((a, z) => a + ist(s, z, 'H2'), 0))} |`, ``);
+  L.push(`## Teams`, ``, `| Team | Teambudget Betreuung | Budget Personen | Ist 1. HJ | Ist 2. HJ |`, `|---|---:|---:|---:|---:|`);
+  teamCompareRows(s).forEach(r => L.push(`| ${r.t.name} | ${chf0(r.tb)} | ${chf0(r.pb)} | ${chf0(r.i1)} | ${chf0(r.i2)} |`));
+  L.push(``, `## Personen`, ``, `| Person | Team | Funktion | Budget | Ist 1. HJ | Ist 2. HJ |`, `|---|---|---|---:|---:|---:|`);
+  [...zs].sort((a, b) => pnameRev(idx.p[a.personId]).localeCompare(pnameRev(idx.p[b.personId]), 'de')).forEach(z => L.push(`| ${pnameRev(idx.p[z.personId])} | ${tname(z.teamId)} | ${z.rolle || fname(z.funktionId)} | ${chf0(budget(z))} | ${chf0(ist(s, z, 'H1'))} | ${chf0(ist(s, z, 'H2'))} |`));
+  ['H1', 'H2'].forEach(hj => { const l = personenMitBetrag(s, hj); if (!l.length) return;
+    L.push(``, `## Auszahlung ${HJ[hj]}`, ``, `| Beleg | Person | Brutto | AHV | Netto | Status |`, `|---|---|---:|---:|---:|---|`);
+    l.forEach(({p, a}) => L.push(`| ${s.id}-${hj}-${p.id} | ${pnameRev(p)} | ${chf(a.brutto)} | ${chf(a.ahv)} | ${chf(a.netto)} | ${s.belege[hj]?.[p.id]?.status || 'offen'} |`)); });
+  return L.join('\n') + '\n';
+}
+async function mdExport(){
+  const s = S(), name = `Budget ${s.id}.md`, text = markdown(s);
+  if (src && !readOnly()) { try { await writeTo(['berichte'], name, text); toast(`berichte/${name} geschrieben`); return; } catch(e){ toast(e.message); } }
+  download(name, text, 'text/markdown'); toast(`${name} heruntergeladen`);
+}
+
+/* ---------- Render & Events ---------- */
+function connectCard(){
+  const c = ghCfg() || {};
+  return `<div class="card" style="max-width:720px;margin:40px auto"><h2>FCF Budget &amp; Löhne – Anmelden</h2>
+    <p>Die Daten liegen im privaten GitHub-Repo <b>${esc(c.repo || GH_DEFAULT.repo)}</b>. Melde dich mit deinem persönlichen GitHub-Zugangsschlüssel an.</p>
+    <form id="ghForm" class="form" onsubmit="return false">
+      <label class="full">GitHub-Zugangsschlüssel (Token)<input name="token" type="password" autocomplete="current-password" value="${esc(c.token || '')}" placeholder="github_pat_… oder ghp_…"></label>
+      <label class="full" style="flex-direction:row;align-items:center;gap:8px;color:var(--text)"><input type="checkbox" name="merken" checked> Auf diesem Gerät angemeldet bleiben</label>
+      <details class="full"><summary class="hint" style="cursor:pointer">Erweitert</summary><label style="margin-top:8px">Repo<input name="repo" value="${esc(c.repo || GH_DEFAULT.repo)}"></label></details>
+    </form>
+    <div class="toolbar" style="margin-top:12px"><button class="btn pri" data-act="ghLogin">Anmelden</button></div>
+    <div class="calc" style="margin-top:12px"><b>Zugangsschlüssel erstellen (einmalig):</b>
+      <ol style="margin:6px 0 0;padding-left:18px">
+        <li>Repo-Besitzer/in: <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">Fine-grained Token erstellen</a> → Repository access: <i>Only select repositories</i> → <b>fcf-budget</b> → Permissions: <b>Contents: Read and write</b>.</li>
+        <li>Kolleg/innen (eingeladen als Collaborator): <a href="https://github.com/settings/tokens/new?scopes=repo&description=FCF%20Budget" target="_blank" rel="noopener">Classic Token erstellen</a> mit Scope <b>repo</b>.</li>
+        <li>Token kopieren und oben einfügen. Er wird nur in diesem Browser gespeichert.</li></ol></div>
+    <p class="hint" style="margin-top:14px">Alternativ (Chrome/Edge): <a data-act="connect" style="cursor:pointer;text-decoration:underline">lokalen Repo-Ordner öffnen</a>.</p></div>`;
+}
+function conflictCard(){
+  return `<div class="notice">Die Datei <code>${esc(conflict)}</code> wurde inzwischen von jemand anderem geändert. Deine letzte Änderung ist noch nicht gespeichert.
+    <div class="toolbar" style="margin-top:8px"><button class="btn pri" data-act="reloadData">Neu laden (meine letzte Änderung verwerfen)</button><button class="btn" data-act="forceSave">Trotzdem überschreiben</button></div></div>`;
+}
+function render(){
+  saveUi(); renderNav();
+  const scroll = $('.tw')?.scrollTop;
+  $('#main').innerHTML = !src ? connectCard() : (conflict ? conflictCard() : '') + (readOnly() ? '<div class="notice">Nur-Lesen-Modus: Änderungen werden nicht gespeichert. Zum Bearbeiten Chrome oder Edge verwenden.</div>' : '') + (V[ui.view] || V.dashboard)();
+  if (scroll) { const t = $('.tw'); if (t) t.scrollTop = scroll; }
+}
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-act]'); if (!el) return;
+  const a = el.dataset.act, id = el.dataset.id;
+  if (el.tagName === 'SELECT' || el.tagName === 'INPUT') return;
+  if (el.closest('dialog') && !['beleg', 'treueCalc'].includes(a)) return;
+  const acts = {
+    nav: () => { ui.view = el.dataset.v; render(); window.scrollTo(0, 0); },
+    go: () => { ui.view = el.dataset.v; if (el.dataset.hj) ui.hj = el.dataset.hj; render(); },
+    sort: () => { const t = el.dataset.t, k = el.dataset.k; const cur = ui.sort[t] || {}; ui.sort[t] = {key: k, dir: cur.key === k && cur.dir !== 'desc' ? 'desc' : 'asc'}; render(); },
+    stat: () => { ui.stat = el.dataset.v; render(); },
+    personEdit: () => personEdit(id), personDetail: () => personDetail(id), zuEdit: () => zuEdit(id, el.dataset.team),
+    teamsOpen: () => { const v = !!el.dataset.v; D.teams.forEach(t => ui.open[t.id] = v); render(); }, teamEdit: () => teamEdit(id), teamDetail: () => teamDetail(id), fktEdit: () => fktEdit(id),
+    saisonEdit: () => saisonEdit(id), saisonNeu, treueCalc,
+    beleg: () => { if (el.closest('dialog')) { $('#dlg').close('cancel'); } setTimeout(() => showBeleg(id, el.dataset.s, el.dataset.hj), 0); },
+    printAlle: () => { const s = S(); const l = personenMitBetrag(s, ui.hj).filter(x => match('az', pname(x.p), x.p.ort)); if (!l.length) return toast('Keine Belege'); printHTML(l.map(x => belegHTML(s, x.p.id, ui.hj)).join('')); },
+    printListe: () => { const s = S(); const l = personenMitBetrag(s, ui.hj); printHTML(`<div class="printlist"><h2>${esc(D.verein.name)} – Auszahlungsliste ${esc(HJ[ui.hj])} – ${esc(s.name)}</h2><table><thead><tr><th>Beleg</th><th>Person</th><th>IBAN</th><th style="text-align:right">Brutto</th><th style="text-align:right">AHV</th><th style="text-align:right">Netto</th><th>Status</th></tr></thead><tbody>${l.map(({p, a}) => `<tr><td>${s.id}-${ui.hj}-${p.id}</td><td>${esc(pnameRev(p))}</td><td>${esc(p.iban)}</td><td style="text-align:right">${chf(a.brutto)}</td><td style="text-align:right">${chf(a.ahv)}</td><td style="text-align:right">${chf(a.netto)}</td><td>${s.belege[ui.hj]?.[p.id]?.status || 'offen'}</td></tr>`).join('')}<tr><td></td><td><b>Total</b></td><td></td><td style="text-align:right"><b>${chf(l.reduce((x, y) => x + y.a.brutto, 0))}</b></td><td style="text-align:right"><b>${chf(l.reduce((x, y) => x + y.a.ahv, 0))}</b></td><td style="text-align:right"><b>${chf(l.reduce((x, y) => x + y.a.netto, 0))}</b></td><td></td></tr></tbody></table></div>`); },
+    pauschOk: () => { const s = S(); let c = 0; s.zuordnungen.filter(z => art(z) === 'pauschal' && num(z['pauschale' + ui.hj])).forEach(z => { const e = s.erfassung[ui.hj][z.id] ||= {}; if (!e.ok) { e.ok = true; c++; } }); persist(); render(); toast(`${c} Pauschalen bestätigt`); },
+    ndsImport, saveNow, ghLogout, ghLogin: () => { const f = $('#ghForm'); ghLogin({token: f.token.value, repo: f.repo.value, merken: f.merken.checked}); }, connect: connectFolder, reconnect, mdExport, reloadData, forceSave: () => saveAll(true),
+    import: () => { $('#fileIn').value = ''; $('#fileIn').click(); },
+    ...EXP,
+  };
+  if (acts[a]) { e.preventDefault(); acts[a](); }
+});
+document.addEventListener('change', e => {
+  const el = e.target;
+  if (el.closest('dialog')) return;
+  if (el.dataset.act === 'saison') { ui.saison = el.value; render(); return; }
+  if (el.dataset.act === 'hj') { ui.hj = el.value; render(); return; }
+  if (el.dataset.qs) { ui.q[el.dataset.qs] = el.value; render(); return; }
+  if (el.dataset.qcheck) { ui.q[el.dataset.qcheck] = el.checked; render(); return; }
+  if (el.dataset.erf) {
+    const s = S(), zid = el.dataset.erf, f = el.dataset.f; const tgt = s.erfassung[ui.hj] ||= {};
+    const e2 = tgt[zid] ||= {};
+    if (el.type === 'checkbox') e2[f] = el.checked; else if (f === 'bemerkung') e2[f] = el.value; else e2[f] = isSet(el.value) ? num(el.value) : '';
+    Object.keys(e2).forEach(k => { if (e2[k] === '' || e2[k] === false) delete e2[k]; });
+    if (!Object.keys(e2).length) delete tgt[zid];
+    persist();
+    const z = s.zuordnungen.find(z => z.id === zid); const c = document.querySelector(`[data-istcell="${zid}"]`); if (c) c.textContent = chf(ist(s, z, ui.hj));
+    const t = $('#erTotal'); if (t) t.textContent = chf(s.zuordnungen.reduce((a, z) => a + ist(s, z, ui.hj), 0));
+    return;
+  }
+  if (el.dataset.beleg) { const s = S(); const b = (s.belege[ui.hj] ||= {})[el.dataset.beleg] ||= {}; b[el.dataset.f] = el.value; if (el.dataset.f === 'status' && el.value === 'ausbezahlt' && !b.datum) b.datum = new Date().toISOString().slice(0, 10); persist(); render(); return; }
+  if (el.dataset.set) {
+    const [o, k] = el.dataset.set.split('.'); const obj = o === 'v' ? D.verein : D.einstellungen;
+    obj[k] = el.type === 'number' ? num(el.value) : el.value; persist(); if (o === 'v') renderNav(); return;
+  }
+});
+document.addEventListener('toggle', e => { const d = e.target; if (d.matches && d.matches('details[data-team]')) { ui.open ||= {}; ui.open[d.dataset.team] = d.open; saveUi(); } }, true);
+document.addEventListener('input', e => {
+  const el = e.target; if (!el.dataset.q) return;
+  ui.q[el.dataset.q] = el.value; const pos = el.selectionStart; render();
+  const n = document.querySelector(`[data-q="${el.dataset.q}"]`); if (n) { n.focus(); n.setSelectionRange(pos, pos); }
+});
+$('#fileIn').addEventListener('change', async e => {
+  const f = e.target.files[0]; if (!f) return;
+  try { const d = parseDataText(await f.text()); if (!confirm(`Daten aus "${f.name}" laden? Stand: ${d.geaendert || 'unbekannt'}. Die Daten im Repo-Ordner werden ersetzt.`)) return; if (!src || readOnly()) { alert('Zuerst den Repo-Ordner verbinden (Chrome/Edge).'); return; } D = d; migrate(); persist(); render(); toast('Daten übernommen und als CSV gespeichert'); }
+  catch(err){ alert('Datei konnte nicht gelesen werden: ' + err.message); }
+});
+$('#csvIn').addEventListener('change', async e => { const f = e.target.files[0]; if (f) ndsLoaded(await f.text(), f.name); });
+$('#dirIn').addEventListener('change', async e => {
+  const files = {}; let name = '';
+  for (const f of e.target.files) { const parts = f.webkitRelativePath.split('/'); name = parts[0]; files[parts.slice(1).join('/')] = f; }
+  if (Object.keys(files).length) await openSource({kind: 'files', files, name});
+});
+window.addEventListener('beforeunload', e => { if (dirty || conflict) { e.preventDefault(); e.returnValue = ''; } });
+
+load(); render();
+// Gespeicherte GitHub-Anmeldung verwenden, sonst zuletzt verbundenen Ordner
+(async () => { const c = ghCfg(); if (c?.token) await ghLogin({token: c.token, repo: c.repo, merken: !!localStorage.getItem(GH_KEY)}); })();
+window.addEventListener('focus', ghCheckRemote); setInterval(ghCheckRemote, 120000);
+if (!ghCfg()?.token)
+(async () => { try { const h = window.showDirectoryPicker && await idb('readonly', st => st.get('dir')); if (h && (await h.queryPermission({mode: 'readwrite'})) === 'granted') await openSource({kind: 'fs', root: h}, true); } catch(e){} })();
+</script>
+</body>
+</html>
