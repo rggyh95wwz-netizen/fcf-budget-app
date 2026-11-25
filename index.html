@@ -157,7 +157,7 @@ details.stamm>summary{cursor:pointer}
 <div id="toast"></div>
 <div id="printArea"></div>
 <input type="file" id="fileIn" accept=".js,.json" hidden>
-<input type="file" id="csvIn" accept=".csv,.txt" hidden>
+<input type="file" id="csvIn" accept=".xlsx,.csv,.txt" multiple hidden>
 <input type="file" id="dirIn" webkitdirectory hidden>
 <script>
 "use strict";
@@ -719,7 +719,7 @@ V.erfassung = () => {
       <select data-qs="erArt"><option value="">Alle Abrechnungsarten</option>${Object.entries(ART).map(([k, v]) => `<option value="${k}" ${fa === k ? 'selected' : ''}>${v}</option>`).join('')}</select>
       <span class="sp"></span>
       <button class="btn" data-act="pauschOk">Alle Pauschalen bestätigen</button>
-      <button class="btn pri" data-act="ndsImport">NDS-Import (CSV)</button></div>
+      <button class="btn pri" data-act="ndsImport">NDS-Import (Anwesenheitsliste)</button></div>
     ${table('er', [
       {key: 'person', label: 'Person', v: r => pnameRev(r.p)},
       {key: 'team', label: 'Team', v: r => tname(r.z.teamId)},
@@ -1163,7 +1163,7 @@ function ndsLoaded(text, fileName){
     (rv, f) => setTimeout(() => ndsMatch(f), 0));
 }
 function ndsMatch(f){
-  const s = S(); const agg = {};
+  const agg = {};
   nds.rows.forEach(r => {
     const name = ((f.cVor ? (r[+f.cVor] || '') + ' ' : '') + (r[+f.cName] || '')).trim(); if (!name) return;
     const team = f.cTeam ? (r[+f.cTeam] || '').trim() : '';
@@ -1171,28 +1171,101 @@ function ndsMatch(f){
     agg[k] ||= {name, team, n: 0};
     agg[k].n += f.cAnz ? num(r[+f.cAnz]) : 1;
   });
+  ndsAssign(Object.values(agg), f.ziel);
+}
+function ndsAssign(list, ziel, info = ''){
+  const s = S();
   const byNorm = {}; D.personen.forEach(p => { byNorm[norm(pname(p))] = p; });
   const ein = s.zuordnungen.filter(z => art(z) === 'einheiten' && z.personId);
-  const items = Object.values(agg).map(a => {
+  const items = list.map(a => {
     let p = byNorm[norm(a.name)];
     if (!p) { const tok = norm(a.name).split(' '); p = D.personen.find(p => { const pt = norm(pname(p)).split(' '); return pt.every(t => tok.includes(t)) || tok.every(t => pt.includes(t)); }); }
     const cand = p ? ein.filter(z => z.personId === p.id) : [];
-    let z = cand[0];
-    if (cand.length > 1 && a.team) z = cand.find(z => norm(tname(z.teamId)).split(' ').some(t => t.length > 1 && norm(a.team).includes(t))) || cand[0];
-    return {...a, p, zid: z?.id || ''};
+    let z = cand[0], det = a.det || '';
+    const kt = a.team && D.teams.find(t => [t.id, t.name].some(x => String(x).toLowerCase().replace(/[^a-z0-9]/g, '').endsWith(String(a.team).toLowerCase().replace(/[^a-z0-9]/g, ''))));
+    if (kt) { z = cand.find(z => z.teamId === kt.id); if (!z && p) det += (det ? ' · ' : '') + `keine Zuordnung im Team ${kt.name}`; }
+    else if (cand.length > 1 && a.team) z = cand.find(z => norm(tname(z.teamId)).split(' ').some(t => t.length > 1 && norm(a.team).includes(t))) || cand[0];
+    return {...a, det, p, zid: a.n > 0 ? z?.id || '' : ''};
   });
   const zOpts = [['', '– nicht übernehmen –']].concat(ein.sort((a, b) => pnameRev(idx.p[a.personId]).localeCompare(pnameRev(idx.p[b.personId]), 'de')).map(z => [z.id, `${pnameRev(idx.p[z.personId])} – ${tname(z.teamId)} (${z.rolle || fname(z.funktionId)})`]));
   const ok = items.filter(i => i.zid).length;
-  dialog('NDS-Import: Personen zuordnen', `<p>${ok} von ${items.length} Einträgen automatisch zugeordnet. Bitte prüfen und bei Bedarf anpassen.</p>
+  dialog('NDS-Import: Personen zuordnen', `${info}<p>${ok} von ${items.length} Einträgen automatisch zugeordnet. Bitte prüfen und bei Bedarf anpassen.</p>
     <div class="tw"><table><thead><tr><th class="ns">NDS-Name</th><th class="ns">Gruppe</th><th class="ns n">Einheiten</th><th class="ns">Zuordnung in der App</th></tr></thead><tbody>
-    ${items.map((it, i) => `<tr><td>${esc(it.name)}</td><td class="muted">${esc(it.team)}</td><td class="n"><input name="n${i}" type="number" step="any" value="${it.n}" style="width:70px"></td><td><select name="z${i}" style="max-width:360px">${zOpts.map(([k, l]) => `<option value="${k}" ${k === it.zid ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></td></tr>`).join('')}
+    ${items.map((it, i) => `<tr><td>${esc(it.name)}</td><td class="muted">${esc(it.team)}${it.det ? '<br><small>' + esc(it.det) + '</small>' : ''}</td><td class="n"><input name="n${i}" type="number" step="any" value="${it.n}" style="width:70px"></td><td><select name="z${i}" style="max-width:360px">${zOpts.map(([k, l]) => `<option value="${k}" ${k === it.zid ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></td></tr>`).join('')}
     </tbody></table></div>`, `<button class="btn" value="cancel" formnovalidate>Abbrechen</button><button class="btn pri" value="ok">Übernehmen</button>`,
     (rv, v) => {
       const tgt = s.erfassung[ui.hj] ||= {}; const sum = {};
       items.forEach((it, i) => { const zid = v['z' + i]; if (zid) sum[zid] = (sum[zid] || 0) + num(v['n' + i]); });
-      Object.entries(sum).forEach(([zid, n]) => { const e = tgt[zid] ||= {}; e.einheiten = f.ziel === 'add' ? num(e.einheiten) + n : n; e.bemerkung = e.bemerkung || 'NDS-Import'; });
+      Object.entries(sum).forEach(([zid, n]) => { const e = tgt[zid] ||= {}; e.einheiten = ziel === 'add' ? num(e.einheiten) + n : n; e.bemerkung = e.bemerkung || 'NDS-Import'; });
       persist(); render(); toast(`${Object.keys(sum).length} Zuordnungen aktualisiert`);
     });
+}
+
+/* NDS-Anwesenheitsliste (.xlsx, Export pro Kurs) */
+async function unzip(buf){
+  const u = new Uint8Array(buf), dv = new DataView(buf), out = {};
+  let e = u.length - 22; while (e >= 0 && dv.getUint32(e, true) !== 0x06054b50) e--;
+  if (e < 0) throw new Error('keine gültige .xlsx-Datei');
+  let n = dv.getUint16(e + 10, true), o = dv.getUint32(e + 16, true);
+  for (let i = 0; i < n; i++) {
+    const m = dv.getUint16(o + 10, true), cs = dv.getUint32(o + 20, true), nl = dv.getUint16(o + 28, true), xl = dv.getUint16(o + 30, true), cl = dv.getUint16(o + 32, true), lo = dv.getUint32(o + 42, true);
+    const name = new TextDecoder().decode(u.subarray(o + 46, o + 46 + nl));
+    out[name] = {m, cs, lo}; o += 46 + nl + xl + cl;
+  }
+  return async name => {
+    const f = out[name]; if (!f) return null;
+    const st = f.lo + 30 + dv.getUint16(f.lo + 26, true) + dv.getUint16(f.lo + 28, true), data = u.subarray(st, st + f.cs);
+    if (f.m === 0) return new TextDecoder().decode(data);
+    return await new Response(new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text();
+  };
+}
+async function readXlsx(file){
+  const get = await unzip(await file.arrayBuffer()), P = t => new DOMParser().parseFromString(t, 'application/xml');
+  const ss = await get('xl/sharedStrings.xml'), strs = ss ? [...P(ss).getElementsByTagName('si')].map(si => [...si.getElementsByTagName('t')].map(t => t.textContent).join('')) : [];
+  let sheet = 'xl/worksheets/sheet1.xml';
+  const wb = await get('xl/workbook.xml'), rels = await get('xl/_rels/workbook.xml.rels');
+  if (wb && rels) { const first = P(wb).getElementsByTagName('sheet')[0], rid = first?.getAttribute('r:id'); const rel = rid && [...P(rels).getElementsByTagName('Relationship')].find(r => r.getAttribute('Id') === rid); if (rel) sheet = 'xl/' + rel.getAttribute('Target').replace(/^\/?xl\//, ''); }
+  const x = await get(sheet); if (!x) throw new Error('Tabellenblatt nicht gefunden');
+  const rows = [];
+  [...P(x).getElementsByTagName('row')].forEach(r => {
+    const ri = +r.getAttribute('r') - 1, row = rows[ri] = [];
+    [...r.getElementsByTagName('c')].forEach(c => {
+      const ref = c.getAttribute('r').replace(/\d+/g, ''); let ci = 0; for (const ch of ref) ci = ci * 26 + ch.charCodeAt(0) - 64; ci--;
+      const t = c.getAttribute('t'), v = c.getElementsByTagName('v')[0]?.textContent;
+      row[ci] = t === 's' ? strs[+v] ?? '' : t === 'inlineStr' ? [...c.getElementsByTagName('t')].map(t => t.textContent).join('') : t === 'str' || t === 'b' ? v ?? '' : v === undefined ? '' : +v;
+    });
+  });
+  return Array.from(rows, r => Array.from(r || [], v => v ?? ''));
+}
+function xlDate(v){
+  if (typeof v === 'number') return new Date(Date.UTC(1899, 11, 30) + v * 864e5).toISOString().slice(0, 10);
+  const m = String(v).match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/); if (m) return `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+  const i = String(v).match(/^\d{4}-\d{2}-\d{2}/); return i ? i[0] : '';
+}
+function hjRange(s, hj){
+  const y = +(String(s.id).match(/\d{4}/) || [new Date().getFullYear()])[0];
+  return hj === 'H1' ? [`${y}-07-01`, `${y}-12-31`] : [`${y + 1}-01-01`, `${y + 1}-06-30`];
+}
+async function ndsXlsx(files){
+  const s = S(), [von, bis] = hjRange(s, ui.hj), list = []; let ausser = 0, kurse = [];
+  for (const file of files) {
+    const rows = await readXlsx(file), lab = r => String(r?.[0] ?? '').trim();
+    const kurs = String(rows.find(r => /^kurs$/i.test(lab(r)))?.[1] ?? '').trim() || file.name;
+    const dRow = rows.find(r => /^datum$/i.test(lab(r))), tRow = rows.find(r => /^symbol der tagesaktivit/i.test(lab(r)));
+    if (!dRow) throw new Error(`${file.name}: keine Zeile "Datum" gefunden. Ist das eine NDS-Anwesenheitsliste?`);
+    const cols = []; dRow.forEach((v, i) => { if (i > 0) { const d = xlDate(v); if (d) { if (d >= von && d <= bis) cols.push(i); else ausser++; } } });
+    const li = rows.findIndex(r => /^leiter/i.test(lab(r))); if (li < 0) throw new Error(`${file.name}: Abschnitt "Leiter/-in" nicht gefunden`);
+    kurse.push(kurs);
+    for (let i = li + 1; i < rows.length; i++) {
+      const r = rows[i]; if (/^teilnehmer/i.test(lab(r))) break;
+      const name = `${String(r[2] ?? '').trim()} ${String(r[1] ?? '').trim()}`.trim(); if (!name) continue;
+      const da = cols.filter(c => String(r[c] ?? '').trim());
+      const wk = da.filter(c => /wettkampf/i.test(String(tRow?.[c] ?? ''))).length;
+      list.push({name, team: kurs, n: da.length, det: `${String(r[3] ?? '').trim()} · ${da.length - wk} Trainings, ${wk} Wettkämpfe`});
+    }
+  }
+  const info = `<p class="hint">${files.length === 1 ? 'Kurs' : 'Kurse'} ${esc(kurse.join(', '))} · Ziel: ${HJ[ui.hj]}, ${esc(s.name)} · gezählt werden Daten vom ${von.split('-').reverse().join('.')} bis ${bis.split('-').reverse().join('.')}${ausser ? ` (${ausser} Daten ausserhalb ignoriert)` : ''}. Jede Anwesenheit eines Leiters (Training oder Wettkampf) = 1 Einheit.</p>`;
+  ndsAssign(list, 'set', info);
 }
 
 /* ---------- Beleg ---------- */
@@ -1348,7 +1421,13 @@ $('#fileIn').addEventListener('change', async e => {
   try { const d = parseDataText(await f.text()); if (!confirm(`Daten aus "${f.name}" laden? Stand: ${d.geaendert || 'unbekannt'}. Die Daten im Repo-Ordner werden ersetzt.`)) return; if (!src || readOnly()) { alert('Zuerst den Repo-Ordner verbinden (Chrome/Edge).'); return; } D = d; migrate(); persist(); render(); toast('Daten übernommen und als CSV gespeichert'); }
   catch(err){ alert('Datei konnte nicht gelesen werden: ' + err.message); }
 });
-$('#csvIn').addEventListener('change', async e => { const f = e.target.files[0]; if (f) ndsLoaded(await f.text(), f.name); });
+$('#csvIn').addEventListener('change', async e => {
+  const files = [...e.target.files]; if (!files.length) return;
+  try {
+    if (files.every(f => /\.xlsx$/i.test(f.name))) return ndsXlsx(files);
+    ndsLoaded(await files[0].text(), files[0].name);
+  } catch(err){ alert('Datei konnte nicht gelesen werden: ' + err.message); }
+});
 $('#dirIn').addEventListener('change', async e => {
   const files = {}; let name = '';
   for (const f of e.target.files) { const parts = f.webkitRelativePath.split('/'); name = parts[0]; files[parts.slice(1).join('/')] = f; }
