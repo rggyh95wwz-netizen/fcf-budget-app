@@ -81,6 +81,7 @@ td input[type=text]{width:150px;padding:3px 6px}
 .legend{display:flex;gap:14px;font-size:12px;color:var(--muted);margin-bottom:8px}
 .legend i{display:inline-block;width:12px;height:8px;border-radius:2px;margin-right:5px;vertical-align:middle}
 dialog{border:1px solid var(--line);border-radius:14px;padding:0;background:var(--panel);color:var(--text);width:min(760px,94vw);box-shadow:0 20px 60px rgba(0,0,0,.3)}
+dialog:has(.tw){width:min(920px,96vw)}
 dialog::backdrop{background:rgba(10,14,22,.45)}
 dialog header{padding:14px 18px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
 dialog header h3{margin:0;font-size:16px}
@@ -1191,7 +1192,7 @@ function ndsAssign(list, ziel, info = ''){
   const ok = items.filter(i => i.zid).length;
   dialog('NDS-Import: Personen zuordnen', `${info}<p>${ok} von ${items.length} Einträgen automatisch zugeordnet. Bitte prüfen und bei Bedarf anpassen.</p>
     <div class="tw"><table><thead><tr><th class="ns">NDS-Name</th><th class="ns">Gruppe</th><th class="ns n">Einheiten</th><th class="ns">Zuordnung in der App</th></tr></thead><tbody>
-    ${items.map((it, i) => `<tr><td>${esc(it.name)}</td><td class="muted">${esc(it.team)}${it.det ? '<br><small>' + esc(it.det) + '</small>' : ''}</td><td class="n"><input name="n${i}" type="number" step="any" value="${it.n}" style="width:70px"></td><td><select name="z${i}" style="max-width:360px">${zOpts.map(([k, l]) => `<option value="${k}" ${k === it.zid ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></td></tr>`).join('')}
+    ${items.map((it, i) => `<tr><td>${esc(it.name)}</td><td class="muted" style="white-space:normal;min-width:160px;max-width:240px">${esc(it.team)}${it.det ? '<br><small>' + esc(it.det) + '</small>' : ''}</td><td class="n"><input name="n${i}" type="number" step="any" value="${it.n}" style="width:70px"></td><td><select name="z${i}" style="max-width:300px">${zOpts.map(([k, l]) => `<option value="${k}" ${k === it.zid ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></td></tr>`).join('')}
     </tbody></table></div>`, `<button class="btn" value="cancel" formnovalidate>Abbrechen</button><button class="btn pri" value="ok">Übernehmen</button>`,
     (rv, v) => {
       const tgt = s.erfassung[ui.hj] ||= {}; const sum = {};
