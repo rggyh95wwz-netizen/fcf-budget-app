@@ -106,6 +106,7 @@ dialog footer{padding:12px 18px;border-top:1px solid var(--line);display:flex;ga
 .hint{font-size:12px;color:var(--muted)}
 .notice{padding:10px 14px;border-radius:10px;background:var(--warnSoft);color:var(--warn);margin-bottom:14px}
 .notice.ok{background:var(--okSoft);color:var(--ok)}
+.notice.vorschau{background:var(--accentSoft);color:var(--text);border:2px solid var(--accent);position:sticky;top:0;z-index:5}
 .tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:14px}
 .tabs a{padding:8px 14px;cursor:pointer;border-bottom:2px solid transparent;color:var(--muted)}
 .tabs a.on{border-color:var(--accent);color:var(--text);font-weight:600}
@@ -319,7 +320,7 @@ let lastText = {};       // zuletzt gelesener/geschriebener Inhalt pro Datei
 let lastMod = {};        // lastModified pro Datei beim Lesen/Schreiben
 let conflict = null;     // Pfad einer extern geänderten Datei
 let saveTimer = null, saving = false;
-const readOnly = () => src?.kind === 'files' || (src?.kind === 'gh' && !src.push);
+const readOnly = () => src?.kind === 'files' || (src?.kind === 'gh' && !src.push) || !!src?.vorschau;
 
 function csvCell(v){ if (v === null || v === undefined) return ''; const s = typeof v === 'boolean' ? (v ? 'ja' : 'nein') : String(v); return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }
 function toCSV(name, rows){
@@ -406,7 +407,7 @@ async function sbAll(table){
 async function sbLoad(){
   const info = await sbRpc('app_info');
   if (!info?.rolle) { const e = new Error(`Für ${info?.email || 'diese E-Mail'} ist noch kein Zugang eingerichtet. Bitte beim Admin melden.`); e.noAccess = true; throw e; }
-  Object.assign(src, {rolle: info.rolle, personId: info.personId, user: info.email, version: info.version});
+  Object.assign(src, {rolle: info.rolle, personId: info.personId, user: info.email, version: info.version, vorschau: !!info.vorschau, echt: info.echt || info.email});
   const names = ['einstellungen', 'personen', 'personen_privat', 'teams', 'funktionen', 'budgetpositionen', 'saisons', 'zuordnungen', 'teambudget', 'team_eckdaten', 'erfassung', 'belege'];
   const res = {}; await Promise.all(names.map(async n => { res[n] = await sbAll(n); }));
   src.besetzung = await sbRpc('team_besetzung').catch(() => []);
@@ -492,6 +493,7 @@ async function sbVerify(){
 }
 const sbOpen = () => openSource({kind: 'sb'});
 async function sbLogout(quiet){
+  try { if (src?.vorschau) await sbRpc('ansicht_beenden'); } catch(e){}
   try { if (!quiet && sbSess) await sbAuth('logout'); } catch(e){}
   sbSess = null; try { localStorage.removeItem(SB_SESS_KEY); } catch(e){}
   src = null; D = emptyData(); migrate(); render();
@@ -524,7 +526,7 @@ async function benutzerLaden(){
         <button class="btn" data-act="benAlle">Alle Personen mit E-Mail als Trainer</button><button class="btn pri" data-act="benNeu">+ Zugang</button></div>
       <div class="tw"><table><thead><tr><th class="ns">E-Mail</th><th class="ns">Rolle</th><th class="ns">Person</th><th class="ns">Aktiv</th><th class="ns"></th></tr></thead><tbody>
       ${list.map(r => `<tr data-email="${esc(r.email)}"><td>${esc(r.email)}</td><td>${sel('rolle', r.rolle, [['trainer', 'Trainer'], ['sportchef', 'Sportchef'], ['admin', 'Admin']])}</td><td>${sel('personId', r.personId, pOpts)}</td>
-        <td><input type="checkbox" data-ben="aktiv" ${r.aktiv ? 'checked' : ''}></td><td><button class="btn sm" data-act="benDel" data-id="${esc(r.email)}">entfernen</button></td></tr>`).join('')}
+        <td><input type="checkbox" data-ben="aktiv" ${r.aktiv ? 'checked' : ''}></td><td style="white-space:nowrap">${r.aktiv && r.email !== (src.echt || '').toLowerCase() ? `<button class="btn sm" data-act="benAls" data-id="${esc(r.email)}" title="App so anschauen, wie diese Person sie sieht">ansehen als</button> ` : ''}<button class="btn sm" data-act="benDel" data-id="${esc(r.email)}">entfernen</button></td></tr>`).join('')}
       </tbody></table></div><p class="hint">Neue Personen melden sich mit ihrer E-Mail an. Sie sehen nur Daten, wenn sie hier eingetragen und aktiv sind. Trainer sehen die Teams, in denen sie eine Zuordnung haben.</p>`;
   } catch(e){ el.innerHTML = `<h2>Benutzer &amp; Rollen</h2><p class="neg">${esc(e.message)}</p>`; }
 }
@@ -543,6 +545,23 @@ async function benAlle(){
   if (!confirm(`${uniq.length} Personen mit E-Mail als Trainer eintragen? Bestehende Zugänge bleiben unverändert.`)) return;
   try { await sb('benutzer?on_conflict=email', {method: 'POST', headers: {Prefer: 'resolution=ignore-duplicates,return=minimal'}, body: JSON.stringify(uniq)}); toast('Zugänge ergänzt'); } catch(e){ toast(e.message); }
   benutzerLaden();
+}
+/* Ansicht als Person: Die Datenbank liefert dann nur, was diese Person sehen darf. Nur lesen. */
+async function benAls(email){
+  try { await sbRpc('ansicht_setzen', {ziel: email}); } catch(e){ toast(e.message); return; }
+  ui.view = 'dashboard'; await openSource(src, true); window.scrollTo(0, 0);
+  toast(`Vorschau als ${src.user} (${ROLLEN[src.rolle] || '–'})`);
+}
+async function ansichtEnde(){
+  try { await sbRpc('ansicht_beenden'); } catch(e){ toast(e.message); return; }
+  ui.view = 'einstellungen'; await openSource(src, true); window.scrollTo(0, 0);
+  toast('Vorschau beendet');
+}
+function vorschauBanner(){
+  const p = idx.p?.[src.personId];
+  return `<div class="notice vorschau"><b>Vorschau als ${esc(p ? pname(p) : src.user)}</b> · ${esc(src.user)} · ${ROLLEN[src.rolle] || '–'}<br>
+    Du siehst die App so, wie diese Person sie sieht. Änderungen werden nicht gespeichert. Die Vorschau endet spätestens nach 2 Stunden.
+    <div class="toolbar" style="margin-top:8px"><button class="btn pri" data-act="ansichtEnde">Vorschau beenden</button></div></div>`;
 }
 async function benDel(email){ if (!confirm(`Zugang ${email} entfernen?`)) return; try { await sb(`benutzer?email=eq.${encodeURIComponent(email)}`, {method: 'DELETE'}); } catch(e){ toast(e.message); } benutzerLaden(); }
 
@@ -690,7 +709,7 @@ async function saveAll(force){
 }
 function persist(){
   if (!src) return;
-  if (readOnly()) { toast('Nur-Lesen-Modus: Änderungen werden nicht gespeichert'); return; }
+  if (readOnly()) { toast(src.vorschau ? 'Vorschau: Änderungen werden nicht gespeichert' : 'Nur-Lesen-Modus: Änderungen werden nicht gespeichert'); return; }
   dirty = true; renderNav();
   clearTimeout(saveTimer); saveTimer = setTimeout(() => saveAll(), src.kind === 'gh' ? 2000 : src.kind === 'sb' ? 800 : 400);
 }
@@ -800,8 +819,8 @@ function renderNav(){
 }
 function saveBox(){
   if (!src) return `<span class="dot dirty"></span>Nicht angemeldet`;
-  if (src.kind === 'sb') return `<span class="dot ${dirty || saving ? 'dirty' : ''}"></span>${saving ? 'Speichere …' : dirty ? 'Ungespeicherte Änderung …' : 'Gespeichert'}<br><span class="muted">${esc(src.user || '')} · ${ROLLEN[src.rolle] || ''}</span>
-    <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm" data-act="reloadData">Neu laden</button><button class="btn sm" data-act="sbLogout">Abmelden</button></div>`;
+  if (src.kind === 'sb') return `<span class="dot ${dirty || saving ? 'dirty' : ''}"></span>${src.vorschau ? 'Vorschau (nur lesen)' : saving ? 'Speichere …' : dirty ? 'Ungespeicherte Änderung …' : 'Gespeichert'}<br><span class="muted">${esc(src.user || '')} · ${ROLLEN[src.rolle] || ''}${src.vorschau ? `<br>angemeldet: ${esc(src.echt)}` : ''}</span>
+    <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">${src.vorschau ? '<button class="btn sm pri" data-act="ansichtEnde">Vorschau beenden</button>' : ''}<button class="btn sm" data-act="reloadData">Neu laden</button><button class="btn sm" data-act="sbLogout">Abmelden</button></div>`;
   if (src.kind === 'gh') return `<span class="dot ${dirty || conflict || saving ? 'dirty' : ''}"></span>${conflict ? 'Konflikt, nicht gespeichert' : saving ? 'Speichere auf GitHub …' : dirty ? 'Ungespeicherte Änderung …' : readOnly() ? 'Nur lesen' : 'Gespeichert auf GitHub'}<br><span class="muted">${esc(src.user || '')} · ${esc(src.repo.split('/')[1])}</span>
     <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm" data-act="reloadData">Neu laden</button><button class="btn sm" data-act="ghLogout">Abmelden</button></div>`;
   if (readOnly()) return `<span class="dot dirty"></span>Nur lesen (${esc(src.name || 'Ordner')})<div style="margin-top:8px"><button class="btn sm" data-act="connect">Anderen Ordner</button></div>`;
@@ -1626,7 +1645,7 @@ function render(){
   const scroll = $('.tw')?.scrollTop;
   const ro = src?.kind === 'sb' && istTrainer() && !TRAINER_EDIT.includes(ui.view);
   $('#main').classList.toggle('ro', ro); $('#main').classList.toggle('r-trainer', src?.kind === 'sb' && istTrainer()); $('#main').classList.toggle('r-sportchef', src?.kind === 'sb' && rolle() === 'sportchef');
-  $('#main').innerHTML = !src ? (sbCfg() || ui.sbSetup ? sbLoginCard() : connectCard()) : (conflict ? conflictCard() : '') + (readOnly() ? '<div class="notice">Nur-Lesen-Modus: Änderungen werden nicht gespeichert. Zum Bearbeiten Chrome oder Edge verwenden.</div>' : '') + (V[ui.view] || V.dashboard)();
+  $('#main').innerHTML = !src ? (sbCfg() || ui.sbSetup ? sbLoginCard() : connectCard()) : (conflict ? conflictCard() : '') + (src.vorschau ? vorschauBanner() : readOnly() ? '<div class="notice">Nur-Lesen-Modus: Änderungen werden nicht gespeichert. Zum Bearbeiten Chrome oder Edge verwenden.</div>' : '') + (V[ui.view] || V.dashboard)();
   if (scroll) { const t = $('.tw'); if (t) t.scrollTop = scroll; }
   if (src?.kind === 'sb' && istAdmin() && ui.view === 'einstellungen') benutzerLaden();
 }
@@ -1648,7 +1667,7 @@ document.addEventListener('click', e => {
     printAlle: () => { const s = S(); const l = personenMitBetrag(s, ui.hj).filter(x => match('az', pname(x.p), x.p.ort)); if (!l.length) return toast('Keine Belege'); printHTML(l.map(x => belegHTML(s, x.p.id, ui.hj)).join('')); },
     printListe: () => { const s = S(); const l = personenMitBetrag(s, ui.hj); printHTML(`<div class="printlist"><h2>${esc(D.verein.name)} – Auszahlungsliste ${esc(HJ[ui.hj])} – ${esc(s.name)}</h2><table><thead><tr><th>Beleg</th><th>Person</th><th>IBAN</th><th style="text-align:right">Brutto</th><th style="text-align:right">AHV</th><th style="text-align:right">Netto</th><th>Status</th></tr></thead><tbody>${l.map(({p, a}) => `<tr><td>${s.id}-${ui.hj}-${p.id}</td><td>${esc(pnameRev(p))}</td><td>${esc(p.iban)}</td><td style="text-align:right">${chf(a.brutto)}</td><td style="text-align:right">${chf(a.ahv)}</td><td style="text-align:right">${chf(a.netto)}</td><td>${s.belege[ui.hj]?.[p.id]?.status || 'offen'}</td></tr>`).join('')}<tr><td></td><td><b>Total</b></td><td></td><td style="text-align:right"><b>${chf(l.reduce((x, y) => x + y.a.brutto, 0))}</b></td><td style="text-align:right"><b>${chf(l.reduce((x, y) => x + y.a.ahv, 0))}</b></td><td style="text-align:right"><b>${chf(l.reduce((x, y) => x + y.a.netto, 0))}</b></td><td></td></tr></tbody></table></div>`); },
     pauschOk: () => { const s = S(); let c = 0; s.zuordnungen.filter(z => art(z) === 'pauschal' && num(z['pauschale' + ui.hj])).forEach(z => { const e = s.erfassung[ui.hj][z.id] ||= {}; if (!e.ok) { e.ok = true; c++; } }); persist(); render(); toast(`${c} Pauschalen bestätigt`); },
-    sbSetup: () => { ui.sbSetup = true; render(); }, sbSendCode, sbVerify, sbBack: () => { ui.sbEmail = null; render(); }, sbLogout: () => sbLogout(), benNeu, benAlle, benDel: () => benDel(id),
+    sbSetup: () => { ui.sbSetup = true; render(); }, sbSendCode, sbVerify, sbBack: () => { ui.sbEmail = null; render(); }, sbLogout: () => sbLogout(), benNeu, benAlle, benDel: () => benDel(id), benAls: () => benAls(id), ansichtEnde,
     ndsImport, saveNow, ghLogout, ghLogin: () => { const f = $('#ghForm'); ghLogin({token: f.token.value, repo: f.repo.value, merken: f.merken.checked}); }, connect: connectFolder, reconnect, mdExport, reloadData, forceSave: () => saveAll(true),
     import: () => { $('#fileIn').value = ''; $('#fileIn').click(); },
     ...EXP,

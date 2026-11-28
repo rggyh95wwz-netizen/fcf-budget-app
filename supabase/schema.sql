@@ -216,3 +216,44 @@ alter function public.ist_benutzer() set search_path = public;
 alter function public.erfassung_schutz() set search_path = public;
 revoke execute on function public.app_info(), public.app_person(), public.app_rolle(), public.app_teams(), public.ausbezahlt(text, text), public.data_version(), public.meine_zuordnung(text, text), public.protokolliere(), public.team_besetzung(), public.team_personen() from public, anon;
 revoke execute on function public.protokolliere() from authenticated;
+
+-- ---------- Ansicht als Person (Admin prüft Rollen und Ansichten) ----------
+-- Ein Admin kann für max. 2 Stunden die Rechte einer anderen Person übernehmen.
+-- Alle Regeln (RLS) gelten dann wie für diese Person; das Protokoll hält weiterhin den echten Admin fest.
+create table if not exists ansicht_als (admin_email text primary key, ziel_email text not null, seit timestamptz not null default now());
+alter table ansicht_als enable row level security;
+revoke all on ansicht_als from public, anon, authenticated;
+
+create or replace function echt_admin() returns boolean language sql stable security definer set search_path = public as $$
+  select exists (select 1 from benutzer where lower(email) = lower(auth.jwt() ->> 'email') and aktiv and rolle = 'admin')
+$$;
+create or replace function app_email() returns text language sql stable security definer set search_path = public as $$
+  select coalesce((select a.ziel_email from ansicht_als a where a.admin_email = lower(auth.jwt() ->> 'email') and a.seit > now() - interval '2 hours' and echt_admin()), auth.jwt() ->> 'email')
+$$;
+create or replace function app_rolle() returns text language sql stable security definer set search_path = public as $$
+  select rolle from benutzer where lower(email) = lower(app_email()) and aktiv
+$$;
+create or replace function app_person() returns text language sql stable security definer set search_path = public as $$
+  select "personId" from benutzer where lower(email) = lower(app_email()) and aktiv
+$$;
+create or replace function app_info() returns json language sql stable security definer set search_path = public as $$
+  select json_build_object('email', app_email(), 'rolle', app_rolle(), 'personId', app_person(), 'version', (select version from meta where id = 1),
+    'echt', auth.jwt() ->> 'email', 'vorschau', lower(app_email()) is distinct from lower(auth.jwt() ->> 'email'))
+$$;
+alter policy lesen on benutzer using (ist_admin() or lower(email) = lower(app_email()));
+
+create or replace function ansicht_setzen(ziel text) returns json language plpgsql volatile security definer set search_path = public as $$
+begin
+  if not echt_admin() then raise exception 'Nur Admins können die Ansicht wechseln' using errcode = '42501'; end if;
+  if not exists (select 1 from benutzer where lower(email) = lower(ziel) and aktiv) then raise exception 'Kein aktiver Zugang für %', ziel; end if;
+  insert into ansicht_als (admin_email, ziel_email, seit) values (lower(auth.jwt() ->> 'email'), lower(ziel), now())
+    on conflict (admin_email) do update set ziel_email = excluded.ziel_email, seit = excluded.seit;
+  return app_info();
+end $$;
+create or replace function ansicht_beenden() returns json language plpgsql volatile security definer set search_path = public as $$
+begin
+  delete from ansicht_als where admin_email = lower(auth.jwt() ->> 'email');
+  return app_info();
+end $$;
+revoke execute on function public.echt_admin(), public.app_email(), public.ansicht_setzen(text), public.ansicht_beenden() from public, anon;
+grant execute on function public.echt_admin(), public.app_email(), public.ansicht_setzen(text), public.ansicht_beenden() to authenticated;
