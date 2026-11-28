@@ -257,3 +257,56 @@ begin
 end $$;
 revoke execute on function public.echt_admin(), public.app_email(), public.ansicht_setzen(text), public.ansicht_beenden() from public, anon;
 grant execute on function public.echt_admin(), public.app_email(), public.ansicht_setzen(text), public.ansicht_beenden() to authenticated;
+
+-- ---------- Tempo: Rechte-Funktionen nur einmal pro Abfrage auswerten (statt pro Zeile) ----------
+create or replace function app_email() returns text language sql stable security definer set search_path = public as $$
+  select coalesce((select a.ziel_email from ansicht_als a where a.admin_email = lower(auth.jwt() ->> 'email') and a.seit > now() - interval '2 hours' and (select echt_admin())), auth.jwt() ->> 'email')
+$$;
+create or replace function app_rolle() returns text language sql stable security definer set search_path = public as $$
+  select rolle from benutzer where lower(email) = (select lower(app_email())) and aktiv
+$$;
+create or replace function app_person() returns text language sql stable security definer set search_path = public as $$
+  select "personId" from benutzer where lower(email) = (select lower(app_email())) and aktiv
+$$;
+create or replace function app_teams() returns setof text language sql stable security definer set search_path = public as $$
+  select distinct "teamId" from zuordnungen where "personId" = (select app_person()) and "personId" is not null
+$$;
+create or replace function team_personen() returns setof text language sql stable security definer set search_path = public as $$
+  select distinct "personId" from zuordnungen where "teamId" in (select app_teams()) and "personId" is not null
+$$;
+create or replace function meine_zuordnung(sid text, zid text) returns boolean language sql stable security definer set search_path = public as $$
+  select exists (select 1 from zuordnungen where "saisonId" = sid and id = zid and "personId" = (select app_person()))
+$$;
+-- alle meine Zuordnungen als "saisonId|id" (für Leseregeln, einmal pro Abfrage)
+create or replace function meine_zuordnungen() returns setof text language sql stable security definer set search_path = public as $$
+  select "saisonId" || '|' || id from zuordnungen where "personId" = (select app_person())
+$$;
+create or replace function ausbezahlt(sid text, hj text) returns boolean language sql stable security definer set search_path = public as $$
+  select exists (select 1 from belege where "saisonId" = sid and halbjahr = hj and "personId" = (select app_person()) and status = 'ausbezahlt')
+$$;
+create or replace function team_besetzung() returns table ("saisonId" text, "teamId" text, "personId" text, vorname text, nachname text, rolle text, funktion text)
+language sql stable security definer set search_path = public as $$
+  select z."saisonId", z."teamId", z."personId", p.vorname, p.nachname, z.rolle, f.name
+  from zuordnungen z left join personen p on p.id = z."personId" left join funktionen f on f.id = z."funktionId"
+  where (select ist_benutzer()) and ((select ist_leitung()) or z."teamId" in (select app_teams()))
+$$;
+revoke execute on function public.meine_zuordnungen() from public, anon;
+grant execute on function public.meine_zuordnungen() to authenticated;
+
+-- Regeln umschreiben: f() -> (select f()); meine_zuordnung(...) in Leseregeln -> Mengenvergleich
+do $$
+declare r record; q text; c text; s text;
+begin
+  for r in select tablename, policyname, qual, with_check from pg_policies where schemaname = 'public' loop
+    q := r.qual; c := r.with_check;
+    q := regexp_replace(q, '(?<!SELECT )\m(ist_admin|ist_leitung|ist_benutzer|app_person|app_email)\(\)', '(select \1())', 'g');
+    c := regexp_replace(c, '(?<!SELECT )\m(ist_admin|ist_leitung|ist_benutzer|app_person|app_email)\(\)', '(select \1())', 'g');
+    if r.policyname = 'lesen' then
+      q := replace(q, 'meine_zuordnung("saisonId", "zuordnungId")', '(("saisonId" || ''|'' || "zuordnungId") in (select meine_zuordnungen()))');
+    end if;
+    s := format('alter policy %I on %I', r.policyname, r.tablename);
+    if q is not null then s := s || ' using (' || q || ')'; end if;
+    if c is not null then s := s || ' with check (' || c || ')'; end if;
+    if q is distinct from r.qual or c is distinct from r.with_check then execute s; end if;
+  end loop;
+end $$;
