@@ -4,17 +4,14 @@ Web-App für Budget und Auszahlungen der Trainer/innen und Funktionär/innen des
 
 **App öffnen:** https://rggyh95wwz-netizen.github.io/fcf-budget-app/
 
-Dieses Repo enthält **nur die App, keine Daten**. Die Daten liegen als CSV-Dateien im privaten Repo `fcf-budget`.
-Beim Öffnen meldet man sich mit einem persönlichen GitHub-Zugangsschlüssel an. Die App liest die Daten aus `fcf-budget` und speichert jede Änderung dort als Commit.
-Ohne Zugang zum privaten Repo sieht man nur die Anmeldeseite.
+Dieses Repo enthält **nur die App, keine Daten**. Die Daten liegen in einer Supabase-Datenbank.
+Man meldet sich mit E-Mail und einem Code per Mail an. Was jemand sieht und ändern darf, bestimmt die Rolle (Admin, Sportchef, Trainer).
+Die Regeln setzt die Datenbank durch (Row Level Security), siehe [`supabase/schema.sql`](supabase/schema.sql).
 
-## Zugangsschlüssel
-
-- **Besitzer/in des Repos:** [Fine-grained Token](https://github.com/settings/personal-access-tokens/new) → Repository access *Only select repositories* → `fcf-budget` → Permissions *Contents: Read and write*.
-- **Kolleg/innen** (auf `fcf-budget` als Collaborator eingeladen): [Classic Token](https://github.com/settings/tokens/new?scopes=repo&description=FCF%20Budget) mit Scope `repo`.
-
-Der Schlüssel wird nur im eigenen Browser gespeichert ("Abmelden" löscht ihn).
+- Einrichtung: [`supabase/EINRICHTEN.md`](supabase/EINRICHTEN.md)
+- Sicherung: jede Nacht als CSV ins private Repo `fcf-budget`
 
 ## Entwicklung
 
 `index.html` ist die ganze App (HTML, CSS, JavaScript, keine Abhängigkeiten). Änderungen hier werden über GitHub Pages veröffentlicht.
+Die früheren Varianten (GitHub-Schlüssel, lokaler Ordner) funktionieren nur, solange in der App kein Supabase-Projekt eingetragen ist.

@@ -82,6 +82,13 @@ td input[type=text]{width:150px;padding:3px 6px}
 .legend i{display:inline-block;width:12px;height:8px;border-radius:2px;margin-right:5px;vertical-align:middle}
 dialog{border:1px solid var(--line);border-radius:14px;padding:0;background:var(--panel);color:var(--text);width:min(760px,94vw);box-shadow:0 20px 60px rgba(0,0,0,.3)}
 dialog:has(.tw){width:min(920px,96vw)}
+/* Rollen (Supabase): nur lesen bzw. ausgeblendete Bearbeitung */
+#main.ro input:not([data-q]):not([data-qcheck]):not([data-benq]):not([data-ben]),#main.ro select:not([data-act]):not([data-qs]):not([data-ben]),#main.ro textarea,
+#main.r-trainer [data-f=ok],#main.r-trainer [data-f=manuell],#main.r-trainer [data-f=korrektur],
+#main.r-sportchef [data-beleg],#main.r-sportchef [data-set]{pointer-events:none;opacity:.75;border-color:transparent;background:transparent}
+#main.ro [data-act=zuEdit],#main.ro [data-act=teamEdit],#main.ro [data-act=teamDetail],#main.ro [data-act=fktEdit],#main.ro [data-act=saisonNeu],#main.ro [data-act=saisonEdit],
+#main.r-trainer [data-act=pauschOk],#main.r-trainer [data-act=csvPersonen],#main.r-trainer .stamm,#main.r-trainer [data-act=personEdit]:not([data-id]){display:none!important}
+
 dialog::backdrop{background:rgba(10,14,22,.45)}
 dialog header{padding:14px 18px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
 dialog header h3{margin:0;font-size:16px}
@@ -340,6 +347,197 @@ function serialize(){
   });
   return f;
 }
+/* ---------- Supabase (Datenbank mit Rollen, Anmeldung per E-Mail-Code) ----------
+   Rollen: admin (alles), sportchef (alles ausser IBAN/AHV, Einstellungen, Auszahlungsstatus), trainer (eigene Teams).
+   Die Regeln setzt die Datenbank durch (Row Level Security, siehe supabase/schema.sql). Die App blendet nur passend ein. */
+const SB_DEFAULT = {url: '', key: ''};   // Supabase-Projekt: Project URL und anon/publishable key (öffentlich, kein Geheimnis)
+const SB_CFG_KEY = 'fcf_budget_sb_cfg_v1', SB_SESS_KEY = 'fcf_budget_sb_v1';
+const sbCfg = () => { try { const c = JSON.parse(localStorage.getItem(SB_CFG_KEY) || 'null'); if (c?.url && c?.key) return c; } catch(e){} return SB_DEFAULT.url ? SB_DEFAULT : null; };
+let sbSess = (() => { try { return JSON.parse(localStorage.getItem(SB_SESS_KEY) || 'null'); } catch(e){ return null; } })();
+const rolle = () => src?.kind === 'sb' ? src.rolle : 'admin';
+const istTrainer = () => rolle() === 'trainer', istAdmin = () => rolle() === 'admin';
+const SB_PRIVAT = ['adresse', 'plz', 'ort', 'email', 'telefon', 'iban', 'ahvNr'];
+const SB_BASE = ['id', 'anrede', 'vorname', 'nachname', 'ahvPflicht', 'eintritt', 'aktiv', 'notiz'];
+const SB_TABLES = {   // Datei → Tabelle, Schlüssel
+  'personen.csv': ['personen', ['id']], 'teams.csv': ['teams', ['id']], 'funktionen.csv': ['funktionen', ['id']], 'budgetpositionen.csv': ['budgetpositionen', ['id']],
+  'zuordnungen.csv': ['zuordnungen', ['saisonId', 'id']], 'teambudget.csv': ['teambudget', ['saisonId', 'teamId', 'positionId']],
+  'team_eckdaten.csv': ['team_eckdaten', ['saisonId', 'teamId', 'feld']], 'erfassung.csv': ['erfassung', ['saisonId', 'halbjahr', 'zuordnungId']],
+  'belege.csv': ['belege', ['saisonId', 'halbjahr', 'personId']],
+};
+async function sbAuth(path, body){
+  const c = sbCfg();
+  const r = await fetch(`${c.url}/auth/v1/${path}`, {method: 'POST', headers: {apikey: c.key, 'Content-Type': 'application/json', ...(sbSess?.access_token && path === 'logout' ? {Authorization: `Bearer ${sbSess.access_token}`} : {})}, body: JSON.stringify(body || {})});
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.msg || j.error_description || j.message || j.error || r.statusText);
+  return j;
+}
+function sbStore(j){
+  sbSess = {access_token: j.access_token, refresh_token: j.refresh_token, expires_at: Math.floor(Date.now() / 1000) + (j.expires_in || 3600), email: j.user?.email || sbSess?.email};
+  try { localStorage.setItem(SB_SESS_KEY, JSON.stringify(sbSess)); } catch(e){}
+}
+async function sbToken(){
+  if (!sbSess) throw new Error('Nicht angemeldet');
+  if (sbSess.expires_at - 60 < Date.now() / 1000) sbStore(await sbAuth('token?grant_type=refresh_token', {refresh_token: sbSess.refresh_token}));
+  return sbSess.access_token;
+}
+async function sb(path, opt = {}){
+  const c = sbCfg(), t = await sbToken();
+  const r = await fetch(`${c.url}/rest/v1/${path}`, {...opt, headers: {apikey: c.key, Authorization: `Bearer ${t}`, 'Content-Type': 'application/json', ...(opt.headers || {})}});
+  if (!r.ok) {
+    const j = await r.json().catch(() => ({}));
+    const e = new Error(j.code === '42501' || r.status === 403 ? 'Keine Berechtigung für diese Änderung' : (j.message || r.statusText)); e.status = r.status; throw e;
+  }
+  const txt = await r.text(); return txt ? JSON.parse(txt) : null;
+}
+const sbRpc = (fn, args = {}) => sb(`rpc/${fn}`, {method: 'POST', body: JSON.stringify(args)});
+async function sbAll(table){
+  const out = [];
+  for (let o = 0; ; o += 1000) { const rows = await sb(`${table}?select=*`, {headers: {Range: `${o}-${o + 999}`, 'Range-Unit': 'items'}}); out.push(...rows); if (rows.length < 1000) break; }
+  return out;
+}
+async function sbLoad(){
+  const info = await sbRpc('app_info');
+  if (!info?.rolle) { const e = new Error(`Für ${info?.email || 'diese E-Mail'} ist noch kein Zugang eingerichtet. Bitte beim Admin melden.`); e.noAccess = true; throw e; }
+  Object.assign(src, {rolle: info.rolle, personId: info.personId, user: info.email, version: info.version});
+  const names = ['einstellungen', 'personen', 'personen_privat', 'teams', 'funktionen', 'budgetpositionen', 'saisons', 'zuordnungen', 'teambudget', 'team_eckdaten', 'erfassung', 'belege'];
+  const res = {}; await Promise.all(names.map(async n => { res[n] = await sbAll(n); }));
+  src.besetzung = await sbRpc('team_besetzung').catch(() => []);
+  const priv = Object.fromEntries(res.personen_privat.map(r => [r.id, r]));
+  const c = src.cache = {};
+  c['daten/stammdaten/personen.csv'] = toCSV('personen', res.personen.map(p => ({...p, ...(priv[p.id] || {}), id: p.id})).sort(byKey('id')));
+  const byPos = rows => [...rows].sort((a, b) => (a.pos ?? 1e9) - (b.pos ?? 1e9) || String(a.id).localeCompare(String(b.id)));
+  c['daten/stammdaten/teams.csv'] = toCSV('teams', byPos(res.teams));
+  c['daten/stammdaten/funktionen.csv'] = toCSV('funktionen', byPos(res.funktionen));
+  c['daten/stammdaten/budgetpositionen.csv'] = toCSV('budgetpositionen', byPos(res.budgetpositionen));
+  c['daten/stammdaten/einstellungen.json'] = JSON.stringify(res.einstellungen[0]?.data || {}, null, 2) + '\n';
+  src.saisonIds = res.saisons.map(s => s.id).sort();
+  res.saisons.forEach(s => {
+    const b = `daten/saisons/${s.id}/`, of = n => res[n].filter(r => r.saisonId === s.id);
+    c[b + 'saison.json'] = JSON.stringify({id: s.id, name: s.name, status: s.status, notiz: s.notiz || ''}, null, 2) + '\n';
+    ['zuordnungen', 'teambudget', 'team_eckdaten', 'erfassung', 'belege'].forEach(n => { c[b + n + '.csv'] = toCSV(n, of(n)); });
+  });
+}
+const sbKey = (row, keys) => keys.map(k => String(row[k] ?? '')).join('|');
+function sbClean(table, row, cols){
+  const sc = SCHEMA[table] || {}, o = {};
+  cols.forEach(k => { let v = row[k]; if ((sc.num || []).includes(k) && (v === '' || v === undefined)) v = null; o[k] = v === undefined ? null : v; });
+  return o;
+}
+async function sbUpsert(table, rows, keys){
+  if (!rows.length) return;
+  await sb(`${table}?on_conflict=${keys.map(encodeURIComponent).join(',')}`, {method: 'POST', headers: {Prefer: 'resolution=merge-duplicates,return=minimal'}, body: JSON.stringify(rows)});
+}
+async function sbDelete(table, keys, row){
+  const q = keys.map(k => `${encodeURIComponent(k)}=eq.${encodeURIComponent(row[k])}`).join('&');
+  const r = await sb(`${table}?${q}`, {method: 'DELETE', headers: {Prefer: 'return=representation'}});
+  if (!r?.length) throw new Error('Keine Berechtigung zum Löschen');
+}
+async function sbSave(changes, deletedSaisons){
+  for (const [path, text] of Object.entries(changes)) {
+    const file = path.split('/').pop(), sid = (path.match(/^daten\/saisons\/([^/]+)\//) || [])[1];
+    if (file === 'einstellungen.json') { await sbUpsert('einstellungen', [{id: 1, data: JSON.parse(text)}], ['id']); continue; }
+    if (file === 'saison.json') { const m = JSON.parse(text); await sbUpsert('saisons', [{id: sid, name: m.name, status: m.status, notiz: m.notiz || ''}], ['id']); continue; }
+    const [table, keys] = SB_TABLES[file] || []; if (!table) continue;
+    const name = table === 'personen' ? 'personen' : table;
+    const withS = r => sid ? {...r, saisonId: sid} : r;
+    const ordered = ['teams', 'funktionen', 'budgetpositionen'].includes(table);
+    const withP = (r, i) => ordered ? {...r, pos: i} : r;
+    const oldRows = fromCSV(name, lastText[path] || '').map(withS).map(withP), newRows = fromCSV(name, text).map(withS).map(withP);
+    const cols = SCHEMA[name].cols.concat(sid ? ['saisonId'] : [], ordered ? ['pos'] : []);
+    const oldM = new Map(oldRows.map(r => [sbKey(r, keys), r]));
+    const newM = new Map(newRows.map(r => [sbKey(r, keys), r]));
+    if (table === 'personen') {
+      const base = [], priv = [];
+      newM.forEach((r, k) => {
+        const o = oldM.get(k);
+        const b = sbClean('personen', r, SB_BASE), p = sbClean('personen', r, ['id', ...SB_PRIVAT]);
+        if (!o || JSON.stringify(b) !== JSON.stringify(sbClean('personen', o, SB_BASE))) base.push(b);
+        if (o ? JSON.stringify(p) !== JSON.stringify(sbClean('personen', o, ['id', ...SB_PRIVAT])) : SB_PRIVAT.some(c => r[c])) priv.push(p);
+      });
+      await sbUpsert('personen', base, ['id']); await sbUpsert('personen_privat', priv, ['id']);
+    } else {
+      const up = []; newM.forEach((r, k) => { const o = oldM.get(k); const c = sbClean(name, r, cols); if (!o || JSON.stringify(c) !== JSON.stringify(sbClean(name, o, cols))) up.push(c); });
+      await sbUpsert(table, up, keys);
+    }
+    for (const [k, r] of oldM) if (!newM.has(k)) await sbDelete(table, keys, r);
+  }
+  for (const id of deletedSaisons) await sbDelete('saisons', ['id'], {id});
+  src.version = await sbRpc('data_version').catch(() => src.version);
+}
+async function sbCheckRemote(){
+  if (src?.kind !== 'sb' || dirty || saving) return;
+  try { const v = await sbRpc('data_version'); if (v !== src.version) { await openSource(src, true); toast('Neue Änderungen geladen'); } } catch(e){}
+}
+async function sbSendCode(){
+  const f = $('#sbForm'), email = f.email.value.trim().toLowerCase();
+  if (f.url && f.url.value.trim()) { try { localStorage.setItem(SB_CFG_KEY, JSON.stringify({url: f.url.value.trim().replace(/\/$/, ''), key: f.key.value.trim()})); } catch(e){} }
+  if (!sbCfg()) return toast('Supabase ist noch nicht eingerichtet (Erweitert)');
+  if (!/^\S+@\S+\.\S+$/.test(email)) return toast('Bitte E-Mail-Adresse eingeben');
+  try { await sbAuth('otp', {email, create_user: true}); ui.sbEmail = email; render(); toast('Code wurde per E-Mail geschickt'); setTimeout(() => $('#sbForm [name=code]')?.focus(), 50); }
+  catch(e){ toast('Code konnte nicht gesendet werden: ' + e.message); }
+}
+async function sbVerify(){
+  const code = $('#sbForm').code.value.replace(/\s/g, '');
+  if (!code) return toast('Bitte den Code aus der E-Mail eingeben');
+  try { const j = await sbAuth('verify', {type: 'email', email: ui.sbEmail, token: code}); sbStore(j); ui.sbEmail = null; await sbOpen(); }
+  catch(e){ toast('Anmeldung fehlgeschlagen: ' + e.message); }
+}
+const sbOpen = () => openSource({kind: 'sb'});
+async function sbLogout(quiet){
+  try { if (!quiet && sbSess) await sbAuth('logout'); } catch(e){}
+  sbSess = null; try { localStorage.removeItem(SB_SESS_KEY); } catch(e){}
+  src = null; D = emptyData(); migrate(); render();
+}
+function sbLoginCard(){
+  const c = sbCfg() || {};
+  return `<div class="card" style="max-width:560px;margin:40px auto"><h2>FCF Budget &amp; Löhne – Anmelden</h2>
+    <form id="sbForm" class="form" onsubmit="return false">
+      ${ui.sbEmail ? `<p class="full">Wir haben einen Code an <b>${esc(ui.sbEmail)}</b> geschickt. Bitte hier eingeben.</p>
+        <label class="full">Code aus der E-Mail<input name="code" inputmode="numeric" autocomplete="one-time-code" placeholder="123456"></label>`
+      : `<label class="full">E-Mail-Adresse<input name="email" type="email" autocomplete="email" placeholder="vorname.nachname@…"></label>`}
+      ${SB_DEFAULT.url ? '' : `<details class="full"><summary class="hint" style="cursor:pointer">Erweitert (Supabase-Projekt)</summary>
+        <label style="margin-top:8px">Project URL<input name="url" value="${esc(c.url || '')}" placeholder="https://xxxx.supabase.co"></label>
+        <label>Publishable / anon key<input name="key" value="${esc(c.key || '')}"></label></details>`}
+    </form>
+    <div class="toolbar" style="margin-top:12px">${ui.sbEmail ? `<button class="btn pri" data-act="sbVerify">Anmelden</button><button class="btn" data-act="sbBack">Andere E-Mail</button>` : `<button class="btn pri" data-act="sbSendCode">Code senden</button>`}</div>
+    <p class="hint" style="margin-top:14px">Du bekommst einen einmaligen Code per E-Mail. Zugang erhältst du über die Vereinsadministration.</p></div>`;
+}
+/* Benutzerverwaltung (nur Admin) */
+async function benutzerLaden(){
+  const el = $('#benutzerCard'); if (!el) return;
+  try {
+    const rows = await sb('benutzer?select=*&order=email');
+    const pOpts = [['', '–']].concat([...D.personen].sort((a, b) => pnameRev(a).localeCompare(pnameRev(b), 'de')).map(p => [p.id, pnameRev(p)]));
+    const sel = (name, val, opts) => `<select data-ben="${name}">${opts.map(([k, l]) => `<option value="${esc(k)}" ${String(val ?? '') === String(k) ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select>`;
+    const q = (ui.q.ben || '').toLowerCase();
+    const list = rows.filter(r => !q || r.email.includes(q) || pname(idx.p[r.personId]).toLowerCase().includes(q));
+    el.innerHTML = `<h2>Benutzer &amp; Rollen <small>${rows.length} Zugänge · Admin: alles · Sportchef: alles ausser IBAN/AHV und Auszahlung · Trainer: eigene Teams</small></h2>
+      <div class="toolbar"><input type="search" placeholder="Suchen …" value="${esc(ui.q.ben || '')}" data-benq style="max-width:240px"><span class="sp"></span>
+        <button class="btn" data-act="benAlle">Alle Personen mit E-Mail als Trainer</button><button class="btn pri" data-act="benNeu">+ Zugang</button></div>
+      <div class="tw"><table><thead><tr><th class="ns">E-Mail</th><th class="ns">Rolle</th><th class="ns">Person</th><th class="ns">Aktiv</th><th class="ns"></th></tr></thead><tbody>
+      ${list.map(r => `<tr data-email="${esc(r.email)}"><td>${esc(r.email)}</td><td>${sel('rolle', r.rolle, [['trainer', 'Trainer'], ['sportchef', 'Sportchef'], ['admin', 'Admin']])}</td><td>${sel('personId', r.personId, pOpts)}</td>
+        <td><input type="checkbox" data-ben="aktiv" ${r.aktiv ? 'checked' : ''}></td><td><button class="btn sm" data-act="benDel" data-id="${esc(r.email)}">entfernen</button></td></tr>`).join('')}
+      </tbody></table></div><p class="hint">Neue Personen melden sich mit ihrer E-Mail an. Sie sehen nur Daten, wenn sie hier eingetragen und aktiv sind. Trainer sehen die Teams, in denen sie eine Zuordnung haben.</p>`;
+  } catch(e){ el.innerHTML = `<h2>Benutzer &amp; Rollen</h2><p class="neg">${esc(e.message)}</p>`; }
+}
+async function benSet(email, patch){
+  try { await sb(`benutzer?email=eq.${encodeURIComponent(email)}`, {method: 'PATCH', headers: {Prefer: 'return=minimal'}, body: JSON.stringify(patch)}); toast('Gespeichert'); }
+  catch(e){ toast(e.message); } benutzerLaden();
+}
+function benNeu(){
+  const pOpts = [['', '–']].concat([...D.personen].sort((a, b) => pnameRev(a).localeCompare(pnameRev(b), 'de')).map(p => [p.id, pnameRev(p)]));
+  dialog('Neuer Zugang', `<div class="form">${ff('email', 'E-Mail', '', 'email', 'full')}${fs('rolle', 'Rolle', 'trainer', [['trainer', 'Trainer'], ['sportchef', 'Sportchef'], ['admin', 'Admin']])}${fs('personId', 'Person', '', pOpts)}</div>`, null,
+    async (rv, f) => { if (!f.email) return; try { await sb('benutzer', {method: 'POST', headers: {Prefer: 'resolution=merge-duplicates,return=minimal'}, body: JSON.stringify([{email: f.email.trim().toLowerCase(), rolle: f.rolle, personId: f.personId || null, aktiv: true}])}); toast('Zugang erstellt'); } catch(e){ toast(e.message); } benutzerLaden(); });
+}
+async function benAlle(){
+  const rows = D.personen.filter(p => p.email && p.aktiv !== false).map(p => ({email: p.email.trim().toLowerCase(), rolle: 'trainer', personId: p.id, aktiv: true}));
+  const uniq = [...new Map(rows.map(r => [r.email, r])).values()];
+  if (!confirm(`${uniq.length} Personen mit E-Mail als Trainer eintragen? Bestehende Zugänge bleiben unverändert.`)) return;
+  try { await sb('benutzer?on_conflict=email', {method: 'POST', headers: {Prefer: 'resolution=ignore-duplicates,return=minimal'}, body: JSON.stringify(uniq)}); toast('Zugänge ergänzt'); } catch(e){ toast(e.message); }
+  benutzerLaden();
+}
+async function benDel(email){ if (!confirm(`Zugang ${email} entfernen?`)) return; try { await sb(`benutzer?email=eq.${encodeURIComponent(email)}`, {method: 'DELETE'}); } catch(e){ toast(e.message); } benutzerLaden(); }
+
 /* ---------- GitHub (Daten im privaten Repo, Speichern als Commit) ---------- */
 const GH_DEFAULT = {repo: 'rggyh95wwz-netizen/fcf-budget', branch: 'main'};
 const GH_KEY = 'fcf_budget_gh_v1';
@@ -407,11 +605,12 @@ async function fsFile(path, create){
   const d = await getSub(src.root, parts, create); return d.getFileHandle(name, {create});
 }
 async function readText(path){
-  if (src.kind === 'gh') return src.cache[path] ?? null;
+  if (src.kind === 'gh' || src.kind === 'sb') return src.cache[path] ?? null;
   if (src.kind === 'files') { const f = src.files[path]; if (!f) return null; lastMod[path] = f.lastModified; return f.text(); }
   try { const f = await (await fsFile(path, false)).getFile(); lastMod[path] = f.lastModified; return await f.text(); } catch(e){ return null; }
 }
 async function listSaisons(){
+  if (src.kind === 'sb') return src.saisonIds;
   if (src.kind === 'gh') return [...new Set(Object.keys(src.tree).map(p => (p.match(/^daten\/saisons\/([^/]+)\//) || [])[1]).filter(Boolean))].sort();
   if (src.kind === 'files') return [...new Set(Object.keys(src.files).map(p => (p.match(/^daten\/saisons\/([^/]+)\//) || [])[1]).filter(Boolean))].sort();
   try { const d = await getSub(src.root, ['daten', 'saisons'], false); const out = []; for await (const [n, h] of d.entries()) if (h.kind === 'directory') out.push(n); return out.sort(); } catch(e){ return []; }
@@ -445,6 +644,16 @@ async function saveAll(force){
   saving = true;
   try {
     const files = serialize();
+    if (src.kind === 'sb') {
+      const changes = {}; Object.entries(files).forEach(([p, t]) => { if (lastText[p] !== t) changes[p] = t; });
+      const ids = new Set(D.saisons.map(s => s.id)), delS = src.saisonIds.filter(id => !ids.has(id));
+      if (!Object.keys(changes).length && !delS.length) { dirty = false; return; }
+      try { await sbSave(changes, delS); }
+      catch(e){ dirty = false; saving = false; toast('Nicht gespeichert: ' + e.message); await openSource(src, true); return; }
+      Object.assign(lastText, changes); src.saisonIds = [...ids].sort(); dirty = false;
+      if (Object.entries(serialize()).some(([p, t]) => lastText[p] !== t)) setTimeout(() => saveAll(), 100);
+      return;
+    }
     if (src.kind === 'gh') {
       const changes = {}; Object.entries(files).forEach(([p, t]) => { if (lastText[p] !== t) changes[p] = t; });
       const ids = new Set(D.saisons.map(s => s.id));
@@ -475,7 +684,7 @@ function persist(){
   if (!src) return;
   if (readOnly()) { toast('Nur-Lesen-Modus: Änderungen werden nicht gespeichert'); return; }
   dirty = true; renderNav();
-  clearTimeout(saveTimer); saveTimer = setTimeout(() => saveAll(), src.kind === 'gh' ? 2000 : 400);
+  clearTimeout(saveTimer); saveTimer = setTimeout(() => saveAll(), src.kind === 'gh' ? 2000 : src.kind === 'sb' ? 800 : 400);
 }
 async function saveNow(){ clearTimeout(saveTimer); await saveAll(); if (!conflict) toast('Gespeichert'); }
 function saveUi(){ try { localStorage.setItem(LS_UI, JSON.stringify({view:ui.view, saison:ui.saison, hj:ui.hj, stamm:ui.stamm, stat:ui.stat, open:ui.open})); } catch(e){} }
@@ -498,6 +707,7 @@ const idb = (mode, fn) => new Promise((res, rej) => {
 async function openSource(s, quiet){
   const prev = src; src = s;
   if (s.kind === 'gh') { try { await ghLoad(); } catch(e){ src = prev; toast('Laden fehlgeschlagen: ' + e.message); render(); return; } }
+  if (s.kind === 'sb') { try { await sbLoad(); } catch(e){ src = null; if (!e.noAccess && /jwt|token|refresh|angemeldet/i.test(e.message)) { sbSess = null; try { localStorage.removeItem(SB_SESS_KEY); } catch(x){} } toast(e.noAccess ? e.message : 'Laden fehlgeschlagen: ' + e.message); render(); return; } }
   const d = await readAll();
   if (!d) {
     if (s.kind === 'fs' && confirm(`Im Ordner "${s.root.name}" gibt es noch keine Daten (daten/stammdaten/personen.csv). Neue, leere Datenstruktur anlegen?`)) {
@@ -506,8 +716,9 @@ async function openSource(s, quiet){
     src = prev; toast(s.kind === 'gh' ? `Im Repo ${s.repo} gibt es keinen Ordner daten/.` : 'Keine Daten gefunden. Bitte den Repo-Ordner "fcf-budget" wählen.'); render(); return;
   }
   D = d; noData = false; conflict = null; dirty = false; migrate();
+  if (s.kind === 'sb' && istTrainer() && !TRAINER_VIEWS.includes(ui.view)) ui.view = 'teams';
   if (s.kind === 'fs') { try { await idb('readwrite', st => st.put(s.root, 'dir')); } catch(e){} }
-  if (!quiet) toast(`${D.personen.length} Personen, ${D.saisons.length} Saisons geladen${readOnly() ? ' (nur lesen)' : ''}`);
+  if (!quiet) toast(s.kind === 'sb' ? `Angemeldet als ${src.user} (${ROLLEN[src.rolle]})` : `${D.personen.length} Personen, ${D.saisons.length} Saisons geladen${readOnly() ? ' (nur lesen)' : ''}`);
   render();
 }
 async function connectFolder(){
@@ -569,13 +780,20 @@ const NAV = [
   ['Stammdaten', [['personen', '☺', 'Personen'], ['teams', '⚑', 'Teams'], ['funktionen', '⚙', 'Funktionen']]],
   ['System', [['einstellungen', '⚒', 'Einstellungen & Daten']]],
 ];
+const ROLLEN = {admin: 'Admin', sportchef: 'Sportchef', trainer: 'Trainer'};
+const TRAINER_VIEWS = ['teams', 'teambudget', 'personenbudget', 'erfassung', 'auszahlung', 'personen'];
+const TRAINER_LABEL = {personenbudget: 'Mein Budget', erfassung: 'Meine Einsätze', auszahlung: 'Meine Belege', personen: 'Mein Profil'};
+const TRAINER_EDIT = ['erfassung', 'personen'];
 function renderNav(){
+  const nav = !src || src.kind !== 'sb' || !istTrainer() ? NAV : [['Meine Teams', [['teams', '⚑', 'Teams'], ['teambudget', '⚽', 'Budget Teams']]], ['Ich', TRAINER_VIEWS.slice(2).map(v => NAV.flatMap(g => g[1]).find(x => x[0] === v)).map(([id, ic]) => [id, ic, TRAINER_LABEL[id]])]];
   $('#nav').innerHTML = `<div class="brand"><div class="logo">${esc(D.verein.kurz || 'FCF')}</div><div><b>Budget & Löhne</b><small>${esc(D.verein.name)}</small></div></div>` +
-    NAV.map(([g, items]) => `<div class="grp">${g}</div>` + items.map(([id, ic, l]) => `<a data-act="nav" data-v="${id}" class="${ui.view === id ? 'on' : ''}"><span>${ic}</span>${l}</a>`).join('')).join('') +
+    nav.map(([g, items]) => `<div class="grp">${g}</div>` + items.map(([id, ic, l]) => `<a data-act="nav" data-v="${id}" class="${ui.view === id ? 'on' : ''}"><span>${ic}</span>${l}</a>`).join('')).join('') +
     `<div class="save">${saveBox()}</div>`;
 }
 function saveBox(){
   if (!src) return `<span class="dot dirty"></span>Nicht angemeldet`;
+  if (src.kind === 'sb') return `<span class="dot ${dirty || saving ? 'dirty' : ''}"></span>${saving ? 'Speichere …' : dirty ? 'Ungespeicherte Änderung …' : 'Gespeichert'}<br><span class="muted">${esc(src.user || '')} · ${ROLLEN[src.rolle] || ''}</span>
+    <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm" data-act="reloadData">Neu laden</button><button class="btn sm" data-act="sbLogout">Abmelden</button></div>`;
   if (src.kind === 'gh') return `<span class="dot ${dirty || conflict || saving ? 'dirty' : ''}"></span>${conflict ? 'Konflikt, nicht gespeichert' : saving ? 'Speichere auf GitHub …' : dirty ? 'Ungespeicherte Änderung …' : readOnly() ? 'Nur lesen' : 'Gespeichert auf GitHub'}<br><span class="muted">${esc(src.user || '')} · ${esc(src.repo.split('/')[1])}</span>
     <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm" data-act="reloadData">Neu laden</button><button class="btn sm" data-act="ghLogout">Abmelden</button></div>`;
   if (readOnly()) return `<span class="dot dirty"></span>Nur lesen (${esc(src.name || 'Ordner')})<div style="margin-top:8px"><button class="btn sm" data-act="connect">Anderen Ordner</button></div>`;
@@ -623,7 +841,7 @@ V.dashboard = () => {
         <tr><td>Belege 1. HJ</td><td class="n">${b1.aus} von ${b1.n} ausbezahlt</td><td class="n">netto ${chf0(b1.netto)}</td><td><a class="btn sm" data-act="go" data-v="auszahlung" data-hj="H1">öffnen</a></td></tr>
         <tr><td>Belege 2. HJ</td><td class="n">${b2.aus} von ${b2.n} ausbezahlt</td><td class="n">netto ${chf0(b2.netto)}</td><td><a class="btn sm" data-act="go" data-v="auszahlung" data-hj="H2">öffnen</a></td></tr>
         <tr><td>Funktionen ohne Person</td><td class="n">${offen.length}</td><td></td><td><a class="btn sm" data-act="go" data-v="personenbudget">öffnen</a></td></tr>
-        <tr><td>Personen ohne IBAN</td><td class="n">${ohneIban.length}</td><td></td><td><a class="btn sm" data-act="go" data-v="personen">öffnen</a></td></tr>
+        <tr><td>Personen ohne IBAN</td><td class="n">${src?.kind === 'sb' && !istAdmin() ? '–' : ohneIban.length}</td><td></td><td><a class="btn sm" data-act="go" data-v="personen">öffnen</a></td></tr>
         </tbody></table>
         ${offen.length ? `<p class="hint" style="margin-top:10px">Offen: ${offen.slice(0, 8).map(z => esc(`${tname(z.teamId)} – ${z.rolle || fname(z.funktionId)}`)).join(', ')}${offen.length > 8 ? ' …' : ''}</p>` : ''}
       </div>
@@ -815,7 +1033,7 @@ V.statistik = () => {
 
 V.personen = () => {
   const s = S();
-  const rows = D.personen.filter(p => match('pe', p.vorname, p.nachname, p.ort, p.email, p.notiz)).map(p => ({p, zs: s.zuordnungen.filter(z => z.personId === p.id)}));
+  const rows = D.personen.filter(p => !(src?.kind === 'sb' && istTrainer()) || p.id === src.personId).filter(p => match('pe', p.vorname, p.nachname, p.ort, p.email, p.notiz)).map(p => ({p, zs: s.zuordnungen.filter(z => z.personId === p.id)}));
   return pageTop('Personen', true, false) +
     `<div class="card"><h2>Personen <small>${D.personen.length} erfasst, Funktionen/Budget für ${esc(s.name)}</small></h2>
     <div class="toolbar">${searchBox('pe')}<span class="sp"></span><button class="btn" data-act="csvPersonen">CSV</button><button class="btn pri" data-act="personEdit">+ Person</button></div>
@@ -823,7 +1041,7 @@ V.personen = () => {
       {key: 'name', label: 'Name', v: r => pnameRev(r.p), h: r => `<a data-act="personDetail" data-id="${r.p.id}" style="cursor:pointer"><b>${esc(r.p.nachname)}</b> ${esc(r.p.vorname)}</a>${r.p.aktiv === false ? ' <span class="tag">inaktiv</span>' : ''}`},
       {key: 'ort', label: 'Ort', v: r => `${r.p.plz} ${r.p.ort}`.trim()},
       {key: 'email', label: 'E-Mail', v: r => r.p.email},
-      {key: 'iban', label: 'IBAN', v: r => r.p.iban ? 'ja' : '', h: r => r.p.iban ? '✓' : '<span class="tag red">fehlt</span>'},
+      ...(src?.kind === 'sb' && rolle() === 'sportchef' ? [] : [{key: 'iban', label: 'IBAN', v: r => r.p.iban ? 'ja' : '', h: r => r.p.iban ? '✓' : '<span class="tag red">fehlt</span>'}]),
       {key: 'ahv', label: 'AHV', v: r => r.p.ahvPflicht, h: r => ({auto: 'auto', ja: 'pflichtig', nein: 'befreit'})[r.p.ahvPflicht || 'auto']},
       {key: 'fkt', label: 'Funktionen (Saison)', v: r => r.zs.length, h: r => esc(r.zs.map(z => `${z.rolle || fname(z.funktionId)} ${idx.t[z.teamId] ? '(' + z.teamId + ')' : ''}`).join(', ').slice(0, 70))},
       {key: 'budget', label: 'Budget Saison', n: 1, v: r => r.zs.reduce((a, z) => a + budget(z), 0), h: r => chf0(r.zs.reduce((a, z) => a + budget(z), 0))},
@@ -837,7 +1055,10 @@ V.teams = () => {
   ui.open ||= {};
   const showInactive = !!ui.q.teInaktiv;
   const q = (ui.q.tov || '').toLowerCase().trim();
-  const teams = D.teams.filter(t => showInactive || t.aktiv !== false || s.zuordnungen.some(z => z.teamId === t.id) || s.teamBudget[t.id]);
+  const trainer = src?.kind === 'sb' && istTrainer();
+  const besetzung = trainer ? (src.besetzung || []).filter(b => b.saisonId === s.id && b.personId !== src.personId) : [];
+  const meine = new Set([...s.zuordnungen.map(z => z.teamId), ...besetzung.map(b => b.teamId)]);
+  const teams = D.teams.filter(t => trainer ? meine.has(t.id) : (showInactive || t.aktiv !== false || s.zuordnungen.some(z => z.teamId === t.id) || s.teamBudget[t.id]));
   const kats = [...new Set(teams.map(t => t.kategorie || 'Ohne Kategorie'))];
   let sumTb = 0, sumPb = 0, sumIst = 0, sumN = 0;
   const block = t => {
@@ -859,7 +1080,7 @@ V.teams = () => {
     const eck = [['spieler', 'Spieler/innen'], ['einheiten', 'Einheiten/Jahr'], ['staff', 'Staff'], ['trainingsProWoche', 'Trainings/Woche'], ['meisterschaft', 'Meisterschaftsspiele']].filter(([k]) => isSet(ek[k])).map(([k, l]) => `${l}: <b>${num(ek[k])}</b>`).join(' · ');
     return `<details class="team" data-team="${t.id}" ${open ? 'open' : ''}>
       <summary><span class="chev">▸</span><span class="tn">${esc(t.name)} <span class="muted" style="font-weight:400">${esc(t.id)}</span>${t.aktiv === false ? ' <span class="tag">inaktiv</span>' : ''}</span>
-        <span class="tk"><small>Personen</small>${zs.length}</span>
+        <span class="tk"><small>Personen</small>${zs.length + besetzung.filter(b => b.teamId === t.id).length}</span>
         <span class="tk"><small>Teambudget</small>${chf0(aufw)}</span>
         <span class="tk"><small>Betreuung</small>${chf0(betr)}</span>
         <span class="tk"><small>Budget Personen</small>${chf0(pb)}</span>
@@ -870,6 +1091,7 @@ V.teams = () => {
         <div class="tgrid">
           <div><div class="toolbar" style="margin-bottom:6px"><b>Personen</b><span class="sp"></span><button class="btn sm" data-act="zuEdit" data-team="${t.id}">+ Person zuordnen</button></div>
             <div class="tw" style="max-height:none"><table><thead><tr><th class="ns">Person</th><th class="ns">Funktion</th><th class="ns">Abrechnung</th><th class="ns n">Menge × Ansatz</th><th class="ns n">Budget</th><th class="ns n">Ist 1. HJ</th><th class="ns n">Ist 2. HJ</th><th class="ns"></th></tr></thead><tbody>
+            ${besetzung.filter(b => b.teamId === t.id).map(b => `<tr><td>${esc(`${b.nachname || ''} ${b.vorname || ''}`.trim() || 'offen')}</td><td>${esc(b.rolle || b.funktion || '')}</td><td colspan="6" class="muted">Beträge nur für Leitung sichtbar</td></tr>`).join('')}
             ${zs.map(z => `<tr><td>${z.personId ? `<a data-act="personDetail" data-id="${z.personId}" style="cursor:pointer">${esc(pnameRev(idx.p[z.personId]))}</a>` : '<span class="tag red">offen</span>'}</td><td>${esc(z.rolle || fname(z.funktionId))}</td><td><span class="tag ${ARTtag[art(z)]}">${ART[art(z)]}</span></td><td class="n muted">${menge(z)}</td><td class="n"><b>${chf0(budget(z))}</b></td><td class="n">${chf0(ist(s, z, 'H1'))}</td><td class="n">${chf0(ist(s, z, 'H2'))}</td><td><button class="btn sm" data-act="zuEdit" data-id="${z.id}">bearbeiten</button></td></tr>`).join('') || '<tr><td colspan="8" class="empty">Noch keine Personen</td></tr>'}
             </tbody><tfoot><tr><td>Total</td><td></td><td></td><td></td><td class="n">${chf0(pb)}</td><td class="n">${chf0(i1)}</td><td class="n">${chf0(i2)}</td><td></td></tr></tfoot></table></div></div>
           <div><div class="toolbar" style="margin-bottom:6px"><b>Budgetpositionen</b><span class="sp"></span><button class="btn sm" data-act="teamDetail" data-id="${t.id}">Budget bearbeiten</button></div>
@@ -925,12 +1147,15 @@ V.einstellungen = () => {
       ${table('sa', [{key: 'id', label: 'ID'}, {key: 'name', label: 'Name'}, {key: 'status', label: 'Status'}, {key: 'n', label: 'Zuordnungen', n: 1, v: r => r.zuordnungen.length}, {key: 'notiz', label: 'Notiz', h: r => `<span class="muted">${esc((r.notiz || '').slice(0, 80))}</span>`},
         {key: 'x', label: '', ns: 1, h: r => `<button class="btn sm" data-act="saisonEdit" data-id="${r.id}">bearbeiten</button>`}], D.saisons)}
       <div class="toolbar" style="margin-top:10px"><button class="btn pri" data-act="saisonNeu">+ Neue Saison</button></div></div>
+    ${src?.kind === 'sb' ? `${istAdmin() ? '<div class="card" id="benutzerCard"><h2>Benutzer &amp; Rollen</h2><p class="muted">Lade …</p></div>' : ''}
+    <div class="card"><h2>Daten</h2><p>Die Daten liegen in der Datenbank (Supabase). Jede Änderung wird sofort gespeichert. Eine Kopie als CSV wird jede Nacht ins Git-Repo <b>fcf-budget</b> geschrieben.</p>
+      <div class="toolbar"><button class="btn" data-act="reloadData">Neu laden</button><button class="btn" data-act="exportJson">Export JSON</button><button class="btn" data-act="mdExport">Saison als Markdown</button></div></div>` : `
     <div class="card"><h2>Daten</h2>
       <p>Die Daten liegen als CSV-Dateien im Git-Repo <b>fcf-budget</b>, Ordner <code>daten/</code>. ${src ? (readOnly() ? 'Geöffnet im Nur-Lesen-Modus.' : `Verbunden mit Ordner <b>${esc(src.root.name)}</b>. Jede Änderung wird sofort in die Dateien geschrieben.`) : 'Kein Ordner verbunden.'}</p>
       <p class="hint">Ablauf: vor dem Arbeiten in GitHub Desktop "Pull", danach hier "Neu laden". Nach dem Arbeiten in GitHub Desktop "Commit" und "Push".</p>
       <div class="toolbar"><button class="btn pri" data-act="connect">Repo-Ordner verbinden</button><button class="btn" data-act="reloadData">Neu laden</button>
         <button class="btn" data-act="import">Alte Daten übernehmen (.js/.json)</button>
-        <button class="btn" data-act="exportJson">Export JSON</button><button class="btn" data-act="mdExport">Saison als Markdown (berichte/)</button></div></div>`;
+        <button class="btn" data-act="exportJson">Export JSON</button><button class="btn" data-act="mdExport">Saison als Markdown (berichte/)</button></div></div>`}`;
 };
 const fi = (k, l, v, type = 'text') => `<label>${esc(l)}<input type="${type}" ${type === 'number' ? 'step="any"' : ''} data-set="${k}" value="${esc(v ?? '')}"></label>`;
 
@@ -969,6 +1194,11 @@ function personEdit(id){
       }
       reindex(); persist(); render();
     });
+  if (src?.kind === 'sb') {
+    const body = $('#dlgBody');
+    if (istTrainer()) { body.querySelectorAll('[name]').forEach(el => { if (!SB_PRIVAT.includes(el.name)) el.disabled = true; }); $('#dlgFoot [value=del]')?.remove(); body.insertAdjacentHTML('afterbegin', '<p class="hint full">Du kannst deine Adresse, Kontaktdaten und IBAN anpassen. Für andere Änderungen bitte beim Admin melden.</p>'); }
+    else if (!istAdmin()) { SB_PRIVAT.forEach(n => body.querySelector(`[name=${n}]`)?.closest('label')?.remove()); }
+  }
 }
 
 function personDetail(id){
@@ -1353,7 +1583,7 @@ function connectCard(){
         <li>Repo-Besitzer/in: <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">Fine-grained Token erstellen</a> → Repository access: <i>Only select repositories</i> → <b>fcf-budget</b> → Permissions: <b>Contents: Read and write</b>.</li>
         <li>Kolleg/innen (eingeladen als Collaborator): <a href="https://github.com/settings/tokens/new?scopes=repo&description=FCF%20Budget" target="_blank" rel="noopener">Classic Token erstellen</a> mit Scope <b>repo</b>.</li>
         <li>Token kopieren und oben einfügen. Er wird nur in diesem Browser gespeichert.</li></ol></div>
-    <p class="hint" style="margin-top:14px">Alternativ (Chrome/Edge): <a data-act="connect" style="cursor:pointer;text-decoration:underline">lokalen Repo-Ordner öffnen</a>.</p></div>`;
+    <p class="hint" style="margin-top:14px">Alternativ (Chrome/Edge): <a data-act="connect" style="cursor:pointer;text-decoration:underline">lokalen Repo-Ordner öffnen</a> · <a data-act="sbSetup" style="cursor:pointer;text-decoration:underline">Anmeldung mit E-Mail-Code (Supabase)</a>.</p></div>`;
 }
 function conflictCard(){
   return `<div class="notice">Die Datei <code>${esc(conflict)}</code> wurde inzwischen von jemand anderem geändert. Deine letzte Änderung ist noch nicht gespeichert.
@@ -1362,8 +1592,11 @@ function conflictCard(){
 function render(){
   saveUi(); renderNav();
   const scroll = $('.tw')?.scrollTop;
-  $('#main').innerHTML = !src ? connectCard() : (conflict ? conflictCard() : '') + (readOnly() ? '<div class="notice">Nur-Lesen-Modus: Änderungen werden nicht gespeichert. Zum Bearbeiten Chrome oder Edge verwenden.</div>' : '') + (V[ui.view] || V.dashboard)();
+  const ro = src?.kind === 'sb' && istTrainer() && !TRAINER_EDIT.includes(ui.view);
+  $('#main').classList.toggle('ro', ro); $('#main').classList.toggle('r-trainer', src?.kind === 'sb' && istTrainer()); $('#main').classList.toggle('r-sportchef', src?.kind === 'sb' && rolle() === 'sportchef');
+  $('#main').innerHTML = !src ? (sbCfg() || ui.sbSetup ? sbLoginCard() : connectCard()) : (conflict ? conflictCard() : '') + (readOnly() ? '<div class="notice">Nur-Lesen-Modus: Änderungen werden nicht gespeichert. Zum Bearbeiten Chrome oder Edge verwenden.</div>' : '') + (V[ui.view] || V.dashboard)();
   if (scroll) { const t = $('.tw'); if (t) t.scrollTop = scroll; }
+  if (src?.kind === 'sb' && istAdmin() && ui.view === 'einstellungen') benutzerLaden();
 }
 document.addEventListener('click', e => {
   const el = e.target.closest('[data-act]'); if (!el) return;
@@ -1382,6 +1615,7 @@ document.addEventListener('click', e => {
     printAlle: () => { const s = S(); const l = personenMitBetrag(s, ui.hj).filter(x => match('az', pname(x.p), x.p.ort)); if (!l.length) return toast('Keine Belege'); printHTML(l.map(x => belegHTML(s, x.p.id, ui.hj)).join('')); },
     printListe: () => { const s = S(); const l = personenMitBetrag(s, ui.hj); printHTML(`<div class="printlist"><h2>${esc(D.verein.name)} – Auszahlungsliste ${esc(HJ[ui.hj])} – ${esc(s.name)}</h2><table><thead><tr><th>Beleg</th><th>Person</th><th>IBAN</th><th style="text-align:right">Brutto</th><th style="text-align:right">AHV</th><th style="text-align:right">Netto</th><th>Status</th></tr></thead><tbody>${l.map(({p, a}) => `<tr><td>${s.id}-${ui.hj}-${p.id}</td><td>${esc(pnameRev(p))}</td><td>${esc(p.iban)}</td><td style="text-align:right">${chf(a.brutto)}</td><td style="text-align:right">${chf(a.ahv)}</td><td style="text-align:right">${chf(a.netto)}</td><td>${s.belege[ui.hj]?.[p.id]?.status || 'offen'}</td></tr>`).join('')}<tr><td></td><td><b>Total</b></td><td></td><td style="text-align:right"><b>${chf(l.reduce((x, y) => x + y.a.brutto, 0))}</b></td><td style="text-align:right"><b>${chf(l.reduce((x, y) => x + y.a.ahv, 0))}</b></td><td style="text-align:right"><b>${chf(l.reduce((x, y) => x + y.a.netto, 0))}</b></td><td></td></tr></tbody></table></div>`); },
     pauschOk: () => { const s = S(); let c = 0; s.zuordnungen.filter(z => art(z) === 'pauschal' && num(z['pauschale' + ui.hj])).forEach(z => { const e = s.erfassung[ui.hj][z.id] ||= {}; if (!e.ok) { e.ok = true; c++; } }); persist(); render(); toast(`${c} Pauschalen bestätigt`); },
+    sbSetup: () => { ui.sbSetup = true; render(); }, sbSendCode, sbVerify, sbBack: () => { ui.sbEmail = null; render(); }, sbLogout: () => sbLogout(), benNeu, benAlle, benDel: () => benDel(id),
     ndsImport, saveNow, ghLogout, ghLogin: () => { const f = $('#ghForm'); ghLogin({token: f.token.value, repo: f.repo.value, merken: f.merken.checked}); }, connect: connectFolder, reconnect, mdExport, reloadData, forceSave: () => saveAll(true),
     import: () => { $('#fileIn').value = ''; $('#fileIn').click(); },
     ...EXP,
@@ -1391,6 +1625,8 @@ document.addEventListener('click', e => {
 document.addEventListener('change', e => {
   const el = e.target;
   if (el.closest('dialog')) return;
+  if (el.dataset.ben) { const email = el.closest('tr').dataset.email; benSet(email, {[el.dataset.ben]: el.type === 'checkbox' ? el.checked : (el.value || null)}); return; }
+  if (el.dataset.benq !== undefined) { ui.q.ben = el.value; benutzerLaden(); return; }
   if (el.dataset.act === 'saison') { ui.saison = el.value; render(); return; }
   if (el.dataset.act === 'hj') { ui.hj = el.value; render(); return; }
   if (el.dataset.qs) { ui.q[el.dataset.qs] = el.value; render(); return; }
@@ -1440,6 +1676,7 @@ window.addEventListener('beforeunload', e => { if (dirty || conflict) { e.preven
 load(); render();
 // Gespeicherte GitHub-Anmeldung verwenden, sonst zuletzt verbundenen Ordner
 (async () => {
+  if (sbCfg()) { if (sbSess) await sbOpen(); else render(); return; }
   // Über Cloudflare ausgeliefert (Anmeldung mit E-Mail-Code): der Worker hält den GitHub-Schlüssel.
   if (/^https?:$/.test(location.protocol) && !/github\.io$/.test(location.hostname)) {
     try { const r = await fetch('/api/me', {cache: 'no-store'}); if (r.ok) { const me = await r.json(); if (me.email) return openSource({kind: 'gh', proxy: true, repo: me.repo, branch: GH_DEFAULT.branch, user: me.email, push: me.push !== false}); } } catch(e){}
@@ -1447,8 +1684,9 @@ load(); render();
   const c = ghCfg(); if (c?.token) await ghLogin({token: c.token, repo: c.repo, merken: !!localStorage.getItem(GH_KEY)});
 })();
 window.addEventListener('focus', ghCheckRemote); setInterval(ghCheckRemote, 120000);
+window.addEventListener('focus', sbCheckRemote); setInterval(sbCheckRemote, 60000);
 if (!ghCfg()?.token)
-(async () => { try { const h = window.showDirectoryPicker && await idb('readonly', st => st.get('dir')); if (h && (await h.queryPermission({mode: 'readwrite'})) === 'granted') await openSource({kind: 'fs', root: h}, true); } catch(e){} })();
+(async () => { if (sbCfg()) return; try { const h = window.showDirectoryPicker && await idb('readonly', st => st.get('dir')); if (h && (await h.queryPermission({mode: 'readwrite'})) === 'granted') await openSource({kind: 'fs', root: h}, true); } catch(e){} })();
 </script>
 </body>
 </html>
