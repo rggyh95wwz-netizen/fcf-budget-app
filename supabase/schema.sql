@@ -208,3 +208,11 @@ grant select, insert, update, delete on all tables in schema public to authentic
 grant usage, select on all sequences in schema public to authenticated;
 grant execute on all functions in schema public to authenticated;
 revoke all on all tables in schema public from anon;
+
+-- Härtung (Supabase Security Advisor)
+alter function public.ist_admin() set search_path = public;
+alter function public.ist_leitung() set search_path = public;
+alter function public.ist_benutzer() set search_path = public;
+alter function public.erfassung_schutz() set search_path = public;
+revoke execute on function public.app_info(), public.app_person(), public.app_rolle(), public.app_teams(), public.ausbezahlt(text, text), public.data_version(), public.meine_zuordnung(text, text), public.protokolliere(), public.team_besetzung(), public.team_personen() from public, anon;
+revoke execute on function public.protokolliere() from authenticated;
