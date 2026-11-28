@@ -115,6 +115,10 @@ dialog footer{padding:12px 18px;border-top:1px solid var(--line);display:flex;ga
 .minibar{display:inline-block;width:60px;height:6px;border-radius:3px;background:var(--panel2);vertical-align:middle;overflow:hidden;margin-right:6px}.minibar i{display:block;height:100%;background:var(--accent)}
 
 .empty{padding:30px;text-align:center;color:var(--muted)}
+details.katgrp{margin:6px 0}details.katgrp>summary{list-style:none;cursor:pointer;display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;padding:10px 4px;border-bottom:1px solid var(--line)}
+details.katgrp>summary::-webkit-details-marker{display:none}details.katgrp>summary:hover .kn{color:var(--accent)}
+details.katgrp>summary .kn{font-weight:700;text-transform:uppercase;letter-spacing:.06em;font-size:13px}details.katgrp>summary .muted{font-size:12.5px}
+details.katgrp .chev{transition:transform .15s;color:var(--muted)}details.katgrp[open]>summary .chev{transform:rotate(90deg)}details.katgrp[open]>summary{margin-bottom:8px}
 details.team{border:1px solid var(--line);border-radius:10px;margin-bottom:8px;background:var(--panel)}
 details.team>summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:18px minmax(200px,1.6fr) repeat(6,minmax(90px,1fr));gap:10px;align-items:center;padding:10px 14px}
 details.team>summary::-webkit-details-marker{display:none}
@@ -1165,7 +1169,13 @@ V.teams = () => {
             ${posRows ? `<tfoot><tr><td>Aufwand total</td><td class="n">${chf0(aufw)}</td></tr>${teamErtrag(s, t.id) ? `<tr><td>Ertrag</td><td class="n">${chf0(teamErtrag(s, t.id))}</td></tr><tr><td>DB</td><td class="n ${teamErtrag(s, t.id) - aufw < 0 ? 'neg' : 'pos'}">${chf0(teamErtrag(s, t.id) - aufw)}</td></tr>` : ''}</tfoot>` : ''}</table></div></div>
         </div></div></details>`;
   };
-  const body = kats.map(k => { const h = teams.filter(t => (t.kategorie || 'Ohne Kategorie') === k).map(block).join(''); return h ? `<div class="kat">${esc(k)}</div>${h}` : ''; }).join('');
+  const body = kats.map(k => {
+    const tb0 = sumTb, pb0 = sumPb, n0 = sumN, ts = teams.filter(t => (t.kategorie || 'Ohne Kategorie') === k);
+    const h = ts.map(block).join(''); if (!h) return '';
+    const key = '__kat_' + k, open = q || trainer ? true : !!ui.open[key];
+    return `<details class="katgrp" data-team="${esc(key)}" ${open ? 'open' : ''}><summary><span class="chev">▸</span><span class="kn">${esc(k)}</span>
+      <span class="muted">${ts.length} ${ts.length === 1 ? 'Team' : 'Teams'} · ${sumN - n0} Personen · Teambudget ${chf0(sumTb - tb0)} · Budget Personen ${chf0(sumPb - pb0)}</span></summary>${h}</details>`;
+  }).join('');
   return pageTop('Teams', true) +
     `<div class="card"><h2>Team-Übersicht ${esc(s.name)} <small>Klick auf ein Team zum Auf- und Zuklappen</small></h2>
     <div class="toolbar">${searchBox('tov', 'Team oder Person suchen …')}
@@ -1685,7 +1695,7 @@ document.addEventListener('click', e => {
     stat: () => { ui.stat = el.dataset.v; render(); },
     tbKat: () => { ui.tbKat = el.dataset.v; render(); window.scrollTo(0, 0); },
     personEdit: () => personEdit(id), personDetail: () => personDetail(id), zuEdit: () => zuEdit(id, el.dataset.team),
-    teamsOpen: () => { const v = !!el.dataset.v; D.teams.forEach(t => ui.open[t.id] = v); render(); }, teamEdit: () => teamEdit(id), teamDetail: () => teamDetail(id), fktEdit: () => fktEdit(id),
+    teamsOpen: () => { const v = !!el.dataset.v; D.teams.forEach(t => { ui.open[t.id] = v; ui.open['__kat_' + (t.kategorie || 'Ohne Kategorie')] = v; }); render(); }, teamEdit: () => teamEdit(id), teamDetail: () => teamDetail(id), fktEdit: () => fktEdit(id),
     saisonEdit: () => saisonEdit(id), saisonNeu, treueCalc,
     beleg: () => { if (el.closest('dialog')) { $('#dlg').close('cancel'); } setTimeout(() => showBeleg(id, el.dataset.s, el.dataset.hj), 0); },
     printAlle: () => { const s = S(); const l = personenMitBetrag(s, ui.hj).filter(x => match('az', pname(x.p), x.p.ort)); if (!l.length) return toast('Keine Belege'); printHTML(l.map(x => belegHTML(s, x.p.id, ui.hj)).join('')); },
