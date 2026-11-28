@@ -1255,14 +1255,14 @@ function personEdit(id){
         D.saisons.forEach(s => s.zuordnungen.forEach(z => { if (z.personId === p.id) z.personId = null; }));
         D.personen = D.personen.filter(x => x.id !== p.id);
       } else {
-        Object.assign(p, f, {aktiv: !!f.aktiv});
+        Object.assign(p, f, {aktiv: 'aktiv' in f ? !!f.aktiv : p.aktiv !== false});
         if (!id) D.personen.push(p);
       }
       reindex(); persist(); render();
     });
   if (src?.kind === 'sb') {
     const body = $('#dlgBody');
-    if (istTrainer()) { body.querySelectorAll('[name]').forEach(el => { if (!SB_PRIVAT.includes(el.name)) el.disabled = true; }); $('#dlgFoot [value=del]')?.remove(); body.insertAdjacentHTML('afterbegin', '<p class="hint full">Du kannst deine Adresse, Kontaktdaten und IBAN anpassen. Für andere Änderungen bitte beim Admin melden.</p>'); }
+    if (istTrainer()) { ['ahvPflicht', 'eintritt', 'aktiv'].forEach(n => body.querySelector(`[name=${n}]`)?.closest('label')?.remove()); body.querySelectorAll('[name]').forEach(el => { if (!SB_PRIVAT.includes(el.name)) el.disabled = true; }); $('#dlgFoot [value=del]')?.remove(); body.insertAdjacentHTML('afterbegin', '<p class="hint full">Du kannst deine Adresse, Kontaktdaten und IBAN anpassen. Für andere Änderungen bitte beim Admin melden.</p>'); }
     else if (!istAdmin()) { SB_PRIVAT.forEach(n => body.querySelector(`[name=${n}]`)?.closest('label')?.remove()); }
   }
 }
