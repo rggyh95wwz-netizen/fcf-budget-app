@@ -350,7 +350,7 @@ function serialize(){
 /* ---------- Supabase (Datenbank mit Rollen, Anmeldung per E-Mail-Code) ----------
    Rollen: admin (alles), sportchef (alles ausser IBAN/AHV, Einstellungen, Auszahlungsstatus), trainer (eigene Teams).
    Die Regeln setzt die Datenbank durch (Row Level Security, siehe supabase/schema.sql). Die App blendet nur passend ein. */
-const SB_DEFAULT = {url: '', key: ''};   // Supabase-Projekt: Project URL und anon/publishable key (öffentlich, kein Geheimnis)
+const SB_DEFAULT = {url: 'https://sudpqpimuisvokekmdoz.supabase.co', key: 'sb_publishable_vekaxTTjmKfxeOYfKZfmaA_XMZL3cGN'};   // Supabase-Projekt: Project URL und anon/publishable key (öffentlich, kein Geheimnis)
 const SB_CFG_KEY = 'fcf_budget_sb_cfg_v1', SB_SESS_KEY = 'fcf_budget_sb_v1';
 const sbCfg = () => { try { const c = JSON.parse(localStorage.getItem(SB_CFG_KEY) || 'null'); if (c?.url && c?.key) return c; } catch(e){} return SB_DEFAULT.url ? SB_DEFAULT : null; };
 let sbSess = (() => { try { return JSON.parse(localStorage.getItem(SB_SESS_KEY) || 'null'); } catch(e){ return null; } })();
