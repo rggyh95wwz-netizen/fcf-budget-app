@@ -201,3 +201,10 @@ create policy schreiben on belege for all using (ist_admin()) with check (ist_ad
 
 -- Protokoll: nur Admin
 create policy lesen on protokoll for select using (ist_admin());
+
+-- ---------- Zugriff über die API (unabhängig von den Projekteinstellungen) ----------
+grant usage on schema public to authenticated;
+grant select, insert, update, delete on all tables in schema public to authenticated;
+grant usage, select on all sequences in schema public to authenticated;
+grant execute on all functions in schema public to authenticated;
+revoke all on all tables in schema public from anon;
