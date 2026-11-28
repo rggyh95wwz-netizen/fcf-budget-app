@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>FCF Budget & Löhne</title>
+<link rel="icon" type="image/png" href="favicon.png">
 <style>
 :root{
   --bg:#f5f6f8;--panel:#fff;--panel2:#f0f2f5;--line:#e1e4e9;--text:#1c2230;--muted:#667085;
@@ -25,7 +26,8 @@ button,input,select,textarea{font:inherit;color:inherit}
 #app{display:grid;grid-template-columns:230px 1fr;min-height:100vh}
 nav{background:var(--panel);border-right:1px solid var(--line);padding:18px 12px;position:sticky;top:0;height:100vh;overflow:auto}
 nav .brand{display:flex;gap:10px;align-items:center;padding:0 8px 16px}
-nav .logo{width:34px;height:34px;border-radius:9px;background:var(--accent);color:#fff;display:grid;place-items:center;font-weight:800;letter-spacing:.5px;font-size:12px}
+nav .logo{width:34px;height:40px;object-fit:contain;flex:none}
+.loginlogo{display:block;width:96px;height:auto;margin:0 auto 14px}
 nav .brand b{display:block;font-size:15px}nav .brand small{color:var(--muted)}
 nav .grp{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);padding:14px 10px 6px}
 nav a{display:flex;gap:9px;align-items:center;padding:7px 10px;border-radius:8px;color:var(--text);text-decoration:none;cursor:pointer}
@@ -37,8 +39,10 @@ main{padding:20px 28px 60px;min-width:0}
 .top{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin-bottom:18px}
 .top h1{font-size:22px;margin:0}
 .top .sel{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-select,input[type=text],input[type=number],input[type=date],input[type=search],textarea{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 9px;min-width:0}
+select,input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=range]),textarea{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 9px;min-width:0}
 input[type=number]{text-align:right}
+::placeholder{color:var(--muted);opacity:.7}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:-1px}
 textarea{width:100%;min-height:60px}
 .btn{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:6px 12px;cursor:pointer;white-space:nowrap}
 .btn:hover{border-color:var(--muted)}
@@ -490,7 +494,7 @@ async function sbLogout(quiet){
 }
 function sbLoginCard(){
   const c = sbCfg() || {};
-  return `<div class="card" style="max-width:560px;margin:40px auto"><h2>FCF Budget &amp; Löhne – Anmelden</h2>
+  return `<div class="card" style="max-width:560px;margin:40px auto"><img class="loginlogo" src="logo.png" alt="FC Frauenfeld"><h2 style="text-align:center">FCF Budget &amp; Löhne – Anmelden</h2>
     <form id="sbForm" class="form" onsubmit="return false">
       ${ui.sbEmail ? `<p class="full">Wir haben einen Code an <b>${esc(ui.sbEmail)}</b> geschickt. Bitte hier eingeben.</p>
         <label class="full">Code aus der E-Mail<input name="code" inputmode="numeric" autocomplete="one-time-code" placeholder="123456"></label>`
@@ -786,7 +790,7 @@ const TRAINER_LABEL = {personenbudget: 'Mein Budget', erfassung: 'Meine Einsätz
 const TRAINER_EDIT = ['erfassung', 'personen'];
 function renderNav(){
   const nav = !src || src.kind !== 'sb' || !istTrainer() ? NAV : [['Meine Teams', [['teams', '⚑', 'Teams'], ['teambudget', '⚽', 'Budget Teams']]], ['Ich', TRAINER_VIEWS.slice(2).map(v => NAV.flatMap(g => g[1]).find(x => x[0] === v)).map(([id, ic]) => [id, ic, TRAINER_LABEL[id]])]];
-  $('#nav').innerHTML = `<div class="brand"><div class="logo">${esc(D.verein.kurz || 'FCF')}</div><div><b>Budget & Löhne</b><small>${esc(D.verein.name)}</small></div></div>` +
+  $('#nav').innerHTML = `<div class="brand"><img class="logo" src="logo.png" alt="${esc(D.verein.kurz || 'FCF')}"><div><b>Budget & Löhne</b><small>${esc(D.verein.name)}</small></div></div>` +
     nav.map(([g, items]) => `<div class="grp">${g}</div>` + items.map(([id, ic, l]) => `<a data-act="nav" data-v="${id}" class="${ui.view === id ? 'on' : ''}"><span>${ic}</span>${l}</a>`).join('')).join('') +
     `<div class="save">${saveBox()}</div>`;
 }
