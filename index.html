@@ -1209,6 +1209,9 @@ V.einstellungen = () => {
       <label>Basis AHV-Abzug<select data-set="e.ahvBasis"><option value="total" ${E.ahvBasis === 'total' ? 'selected' : ''}>Bruttobetrag (wie Excel)</option><option value="lohn" ${E.ahvBasis === 'lohn' ? 'selected' : ''}>nur Lohnanteil (ohne Spesen)</option></select></label>
       ${fi('e.ansatzGrund', 'Grundbeitrag pro Einheit (Standard)', E.ansatzGrund, 'number')}
       <div class="calc">J+S-Beitrag: 10 = gültige J+S-Anerkennung, 2 = ohne. Vereinstreue: 0–1 Jahre = 0, 2–4 = 2, 5–9 = 4, ab 10 = 6. Faktor 1–5 (Leistungsteams 1.5–5, Youth League 2).</div></div></div></div>
+    <div class="card"><h2>Auswahllisten <small>ein Eintrag pro Zeile, Reihenfolge = Reihenfolge im Dropdown</small></h2><div class="grid2">
+      ${Object.entries(LISTEN).map(([k, l]) => { const fehlt = [...new Set(l.used().filter(x => x && !liste(k).includes(x)))]; return `<label>${l.label}<textarea data-liste="${k}" rows="8">${esc(liste(k).join('\n'))}</textarea>${fehlt.length ? `<span class="hint">Noch verwendet, aber nicht in der Liste: ${fehlt.map(esc).join(', ')}</span>` : ''}</label>`; }).join('')}</div>
+      <p class="hint">Umbenennen hier ändert bestehende Funktionen und Teams nicht. Dafür die Funktion oder das Team bearbeiten.</p></div>
     <div class="card"><h2>Saisons</h2>
       ${table('sa', [{key: 'id', label: 'ID'}, {key: 'name', label: 'Name'}, {key: 'status', label: 'Status'}, {key: 'n', label: 'Zuordnungen', n: 1, v: r => r.zuordnungen.length}, {key: 'notiz', label: 'Notiz', h: r => `<span class="muted">${esc((r.notiz || '').slice(0, 80))}</span>`},
         {key: 'x', label: '', ns: 1, h: r => `<button class="btn sm" data-act="saisonEdit" data-id="${r.id}">bearbeiten</button>`}], D.saisons)}
@@ -1339,11 +1342,18 @@ function treueCalc(){
   form.querySelector('[name=treue]').value = st.wert; form.dispatchEvent(new Event('input')); toast(`${jahre} Jahre im Verein → ${st.wert}`);
 }
 
+/* Verwaltbare Auswahllisten (Einstellungen): Bereiche der Funktionen, Kategorien der Teams */
+const LISTEN = {bereiche: {label: 'Bereiche (Funktionen)', used: () => D.funktionen.map(f => f.bereich)}, kategorien: {label: 'Kategorien (Teams)', used: () => D.teams.map(t => t.kategorie)}};
+function liste(key){
+  const own = Array.isArray(D.einstellungen[key]) ? D.einstellungen[key] : null;
+  const used = [...new Set(LISTEN[key].used().filter(Boolean))];
+  return own ? own : key === 'kategorien' ? used : used.sort((a, b) => a.localeCompare(b, 'de'));
+}
+const listSel = (name, label, key, val) => fs(name, label, val || '', [['', '– wählen –']].concat([...new Set(liste(key).concat(val ? [val] : []))].map(x => [x, x])));
 function teamEdit(id){
   const t = id ? idx.t[id] : {id: '', name: '', kategorie: '', aktiv: true};
-  const kats = [...new Set(D.teams.map(t => t.kategorie))];
   dialog(id ? 'Team bearbeiten' : 'Neues Team', `<div class="form">${ff('id', 'Kürzel (eindeutig)', t.id)}${ff('name', 'Name', t.name, 'text', 'w2')}
-    <label>Kategorie<input name="kategorie" list="katl" value="${esc(t.kategorie)}"><datalist id="katl">${kats.map(k => `<option>${esc(k)}</option>`).join('')}</datalist></label>
+    ${listSel('kategorie', 'Kategorie', 'kategorien', t.kategorie)}
     <label>Status<select name="aktiv"><option value="1">aktiv</option><option value="" ${t.aktiv === false ? 'selected' : ''}>inaktiv</option></select></label></div>`,
     (id ? `<button class="btn" value="del" formnovalidate style="margin-right:auto">Löschen</button>` : '') + `<button class="btn" value="cancel" formnovalidate>Abbrechen</button><button class="btn pri" value="ok">Speichern</button>`,
     (rv, f) => {
@@ -1378,9 +1388,8 @@ function teamDetail(id){
 
 function fktEdit(id){
   const f = id ? idx.f[id] : {id: '', name: '', bereich: '', abrechnung: 'pauschal', spesenanteil: 0, pauschaleHJ: 0, ansatzEinsatz: 0, bonusAb: 0, bonus: 0};
-  const ber = [...new Set(D.funktionen.map(f => f.bereich))];
   dialog(id ? 'Funktion bearbeiten' : 'Neue Funktion', `<div class="form">${ff('id', 'Kürzel', f.id)}${ff('name', 'Name', f.name, 'text', 'w2')}
-    <label>Bereich<input name="bereich" list="berl" value="${esc(f.bereich)}"><datalist id="berl">${ber.map(k => `<option>${esc(k)}</option>`).join('')}</datalist></label>
+    ${listSel('bereich', 'Bereich', 'bereiche', f.bereich)}
     ${fs('abrechnung', 'Abrechnung', f.abrechnung, Object.entries(ART))}${ff('spesenanteil', 'Spesenanteil % (nicht AHV-pflichtig)', f.spesenanteil, 'number')}
     ${ff('pauschaleHJ', 'Standard-Pauschale pro HJ', f.pauschaleHJ, 'number')}${ff('ansatzEinsatz', 'Ansatz pro Einsatz', f.ansatzEinsatz, 'number')}
     ${ff('bonusAb', 'Zusatzpauschale ab Einsätzen', f.bonusAb, 'number')}${ff('bonus', 'Zusatzpauschale CHF', f.bonus, 'number')}</div>`,
@@ -1710,6 +1719,7 @@ document.addEventListener('change', e => {
     return;
   }
   if (el.dataset.beleg) { const s = S(); const b = (s.belege[ui.hj] ||= {})[el.dataset.beleg] ||= {}; b[el.dataset.f] = el.value; if (el.dataset.f === 'status' && el.value === 'ausbezahlt' && !b.datum) b.datum = new Date().toISOString().slice(0, 10); persist(); render(); return; }
+  if (el.dataset.liste) { D.einstellungen[el.dataset.liste] = [...new Set(el.value.split('\n').map(x => x.trim()).filter(Boolean))]; persist(); render(); return; }
   if (el.dataset.set) {
     const [o, k] = el.dataset.set.split('.'); const obj = o === 'v' ? D.verein : D.einstellungen;
     obj[k] = el.type === 'number' ? num(el.value) : el.value; persist(); if (o === 'v') renderNav(); return;
