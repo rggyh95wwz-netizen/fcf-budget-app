@@ -109,6 +109,10 @@ dialog footer{padding:12px 18px;border-top:1px solid var(--line);display:flex;ga
 .tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:14px}
 .tabs a{padding:8px 14px;cursor:pointer;border-bottom:2px solid transparent;color:var(--muted)}
 .tabs a.on{border-color:var(--accent);color:var(--text);font-weight:600}
+.kattabs{flex-wrap:wrap}.kattabs a{white-space:nowrap}.kattabs .cnt{display:inline-block;min-width:18px;padding:0 5px;margin-left:4px;border-radius:9px;background:var(--panel2);color:var(--muted);font-size:11px;text-align:center}.kattabs a.on .cnt{background:var(--accentSoft);color:var(--accent)}
+.katkpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin:0 0 14px}.katkpi div{background:var(--panel2);border-radius:10px;padding:8px 12px}.katkpi small{display:block;color:var(--muted);font-size:11px}.katkpi b{font-size:16px}
+.minibar{display:inline-block;width:60px;height:6px;border-radius:3px;background:var(--panel2);vertical-align:middle;overflow:hidden;margin-right:6px}.minibar i{display:block;height:100%;background:var(--accent)}
+
 .empty{padding:30px;text-align:center;color:var(--muted)}
 details.team{border:1px solid var(--line);border-radius:10px;margin-bottom:8px;background:var(--panel)}
 details.team>summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:18px minmax(200px,1.6fr) repeat(6,minmax(90px,1fr));gap:10px;align-items:center;padding:10px 14px}
@@ -861,8 +865,8 @@ function teamCompareRows(s){
     return {t, tb: teamBudgetSum(s, t.id, 'Betreuung'), pb, i1, i2, n: zs.length};
   });
 }
-function teamCompareTable(s){
-  const rows = teamCompareRows(s);
+function teamCompareTable(s, kat){
+  const rows = teamCompareRows(s).filter(r => !kat || (r.t.kategorie || 'Ohne Kategorie') === kat);
   const sum = k => chf0(rows.reduce((a, r) => a + r[k], 0));
   return table('teamcmp', [
     {key: 'team', label: 'Team', v: r => r.t.name, h: r => `<a data-act="teamDetail" data-id="${r.t.id}" style="cursor:pointer">${esc(r.t.name)}</a>`},
@@ -881,21 +885,45 @@ V.teambudget = () => {
   const s = S();
   const groups = [...new Set(D.budgetPositionen.map(p => p.gruppe))];
   const teams = D.teams.filter(t => t.aktiv !== false || s.teamBudget[t.id]);
-  const rows = teams.map(t => { const r = {t}; groups.forEach(g => r[g] = teamBudgetSum(s, t.id, g)); r.aufw = teamAufwand(s, t.id); r.ertr = teamErtrag(s, t.id); r.db = r.ertr - r.aufw; r.sp = num((s.teamEckdaten[t.id] || {}).spieler); return r; });
-  const cols = [{key: 'team', label: 'Team', v: r => r.t.name, h: r => `<a data-act="teamDetail" data-id="${r.t.id}" style="cursor:pointer">${esc(r.t.name)}</a>`},
-    {key: 'sp', label: 'Spieler/innen', n: 1, v: r => r.sp}]
-    .concat(groups.map(g => ({key: g, label: g, n: 1, v: r => r[g], h: r => chf0(r[g])})))
-    .concat([{key: 'aufw', label: 'Aufwand total', n: 1, v: r => r.aufw, h: r => `<b>${chf0(r.aufw)}</b>`},
-      {key: 'db', label: 'DB (Ertrag − Aufwand)', n: 1, v: r => r.db, h: r => `<span class="${r.db < 0 ? 'neg' : 'pos'}">${chf0(r.db)}</span>`},
-      {key: 'kps', label: 'Kosten / Spieler', n: 1, v: r => r.sp ? (r.aufw) / r.sp : 0, h: r => r.sp ? chf0(r.aufw / r.sp) : '–'},
-      {key: 'x', label: '', ns: 1, h: r => `<button class="btn sm" data-act="teamDetail" data-id="${r.t.id}">bearbeiten</button>`}]);
-  const foot = {team: 'Total', sp: rows.reduce((a, r) => a + r.sp, 0)};
-  groups.concat(['aufw', 'db']).forEach(g => foot[g] = chf0(rows.reduce((a, r) => a + r[g], 0)));
+  const mk = t => { const r = {t}; groups.forEach(g => r[g] = teamBudgetSum(s, t.id, g)); r.aufw = teamAufwand(s, t.id); r.ertr = teamErtrag(s, t.id); r.db = r.ertr - r.aufw; r.sp = num((s.teamEckdaten[t.id] || {}).spieler); return r; };
+  const all = teams.map(mk);
+  const katOf = r => r.t.kategorie || 'Ohne Kategorie';
+  const kats = [...new Set(all.map(katOf))];
+  const agg = rs => { const o = {n: rs.length, sp: 0, aufw: 0, ertr: 0, db: 0}; rs.forEach(r => { o.sp += r.sp; o.aufw += r.aufw; o.ertr += r.ertr; o.db += r.db; groups.forEach(g => o[g] = (o[g] || 0) + r[g]); }); return o; };
+  const tot = agg(all);
+  let kat = ui.tbKat || ''; if (kat && !kats.includes(kat)) kat = '';
+  const tabs = `<div class="tabs kattabs"><a data-act="tbKat" data-v="" class="${!kat ? 'on' : ''}">Übersicht</a>` +
+    kats.map(k => `<a data-act="tbKat" data-v="${esc(k)}" class="${kat === k ? 'on' : ''}">${esc(k)} <span class="cnt">${all.filter(r => katOf(r) === k).length}</span></a>`).join('') + `</div>`;
+  const dbH = v => `<span class="${v < 0 ? 'neg' : 'pos'}">${chf0(v)}</span>`;
+  let body;
+  if (!kat) {
+    const kr = kats.map(k => ({k, ...agg(all.filter(r => katOf(r) === k))}));
+    body = table('tbkat', [
+      {key: 'k', label: 'Kategorie', v: r => r.k, h: r => `<a data-act="tbKat" data-v="${esc(r.k)}" style="cursor:pointer"><b>${esc(r.k)}</b></a>`},
+      {key: 'n', label: 'Teams', n: 1, v: r => r.n}, {key: 'sp', label: 'Spieler/innen', n: 1, v: r => r.sp},
+      {key: 'aufw', label: 'Aufwand', n: 1, v: r => r.aufw, h: r => chf0(r.aufw)}, {key: 'ertr', label: 'Ertrag', n: 1, v: r => r.ertr, h: r => chf0(r.ertr)},
+      {key: 'db', label: 'DB (Ertrag − Aufwand)', n: 1, v: r => r.db, h: r => dbH(r.db)},
+      {key: 'kps', label: 'Kosten / Spieler', n: 1, v: r => r.sp ? r.aufw / r.sp : 0, h: r => r.sp ? chf0(r.aufw / r.sp) : '–'},
+      {key: 'ant', label: 'Anteil Aufwand', n: 1, v: r => r.aufw, h: r => `<span class="minibar"><i style="width:${Math.round(100 * r.aufw / (tot.aufw || 1))}%"></i></span> ${pct(r.aufw, tot.aufw)}`},
+    ], kr, {foot: {k: 'Total', n: tot.n, sp: tot.sp, aufw: chf0(tot.aufw), ertr: chf0(tot.ertr), db: chf0(tot.db), kps: tot.sp ? chf0(tot.aufw / tot.sp) : ''}});
+  } else {
+    const rows = all.filter(r => katOf(r) === kat), a = agg(rows);
+    const kpi = `<div class="katkpi"><div><small>Teams</small><b>${a.n}</b></div><div><small>Spieler/innen</small><b>${a.sp}</b></div><div><small>Aufwand</small><b>${chf0(a.aufw)}</b></div><div><small>Ertrag</small><b>${chf0(a.ertr)}</b></div><div><small>DB</small><b class="${a.db < 0 ? 'neg' : 'pos'}">${chf0(a.db)}</b></div><div><small>Kosten / Spieler</small><b>${a.sp ? chf0(a.aufw / a.sp) : '–'}</b></div><div><small>Anteil Aufwand</small><b>${pct(a.aufw, tot.aufw)}</b></div></div>`;
+    const cols = [{key: 'team', label: 'Team', v: r => r.t.name, h: r => `<a data-act="teamDetail" data-id="${r.t.id}" style="cursor:pointer">${esc(r.t.name)}</a>`},
+      {key: 'sp', label: 'Spieler/innen', n: 1, v: r => r.sp}]
+      .concat(groups.map(g => ({key: g, label: g, n: 1, v: r => r[g], h: r => chf0(r[g])})))
+      .concat([{key: 'aufw', label: 'Aufwand total', n: 1, v: r => r.aufw, h: r => `<b>${chf0(r.aufw)}</b>`},
+        {key: 'db', label: 'DB (Ertrag − Aufwand)', n: 1, v: r => r.db, h: r => dbH(r.db)},
+        {key: 'kps', label: 'Kosten / Spieler', n: 1, v: r => r.sp ? r.aufw / r.sp : 0, h: r => r.sp ? chf0(r.aufw / r.sp) : '–'},
+        {key: 'x', label: '', ns: 1, h: r => `<button class="btn sm" data-act="teamDetail" data-id="${r.t.id}">bearbeiten</button>`}]);
+    const foot = {team: 'Total ' + kat, sp: a.sp}; groups.concat(['aufw', 'db']).forEach(g => foot[g] = chf0(a[g]));
+    body = kpi + table('teamb', cols, rows, {foot});
+  }
   return pageTop('Budget Teams') +
-    `<div class="card"><h2>Teambudget ${esc(s.name)} <small>Klick auf ein Team für Positionen und Eckdaten</small></h2>
+    `<div class="card"><h2>Teambudget ${esc(s.name)} <small>${kat ? 'Klick auf ein Team für Positionen und Eckdaten' : 'Klick auf eine Kategorie für ihre Teams'}</small></h2>
      <div class="toolbar"><span class="hint">Einnahmen = J+S, Sponsoring, Mitgliederbeiträge. Gruppen und Positionen wie im Excel "Budget Sport".</span><span class="sp"></span><button class="btn" data-act="csvTeams">CSV exportieren</button></div>
-     ${table('teamb', cols, rows, {foot})}</div>
-     <div class="card"><h2>Personalbudget pro Team</h2>${teamCompareTable(s)}</div>`;
+     ${tabs}${body}</div>
+     <div class="card"><h2>Personalbudget pro Team${kat ? ' <small>' + esc(kat) + '</small>' : ''}</h2>${teamCompareTable(s, kat)}</div>`;
 };
 
 V.personenbudget = () => {
@@ -1612,6 +1640,7 @@ document.addEventListener('click', e => {
     go: () => { ui.view = el.dataset.v; if (el.dataset.hj) ui.hj = el.dataset.hj; render(); },
     sort: () => { const t = el.dataset.t, k = el.dataset.k; const cur = ui.sort[t] || {}; ui.sort[t] = {key: k, dir: cur.key === k && cur.dir !== 'desc' ? 'desc' : 'asc'}; render(); },
     stat: () => { ui.stat = el.dataset.v; render(); },
+    tbKat: () => { ui.tbKat = el.dataset.v; render(); window.scrollTo(0, 0); },
     personEdit: () => personEdit(id), personDetail: () => personDetail(id), zuEdit: () => zuEdit(id, el.dataset.team),
     teamsOpen: () => { const v = !!el.dataset.v; D.teams.forEach(t => ui.open[t.id] = v); render(); }, teamEdit: () => teamEdit(id), teamDetail: () => teamDetail(id), fktEdit: () => fktEdit(id),
     saisonEdit: () => saisonEdit(id), saisonNeu, treueCalc,
